@@ -1,0 +1,25 @@
+{
+  "name": "gemini-3-1-pro-preview",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "type": "module",
+  "dependencies": {
+    "@llamaindex/core": "^0.6.22",
+    "@llamaindex/env": "^0.1.30",
+    "@llamaindex/node-parser": "^2.0.22",
+    "@llamaindex/ollama": "^0.1.23",
+    "@llamaindex/openai": "^0.4.22",
+    "acorn": "^8.16.0",
+    "cheerio": "^1.2.0",
+    "glob": "^13.0.6",
+    "graphology": "^0.26.0",
+    "llamaindex": "^0.12.1"
+  }
+}
