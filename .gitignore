@@ -29,3 +29,7 @@ coverage/
 *.js.map
 # Ignore generated docs
 /docs/
+
+# Ignore resources
+## Spec
+./spec-built/
