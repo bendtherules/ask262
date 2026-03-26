@@ -1,0 +1,31 @@
+# Node.js / JavaScript typical ignores
+# Dependency directories
+node_modules/
+# Build output
+dist/
+build/
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+# Runtime data
+*.pid
+# Environment files
+.env
+.env.local
+.env.*.local
+# OS files
+.DS_Store
+# Coverage reports
+coverage/
+# Test output
+.vscode/
+.idea/
+*.log
+# Optional: package lock files if you prefer not to commit them
+# package-lock.json
+# yarn.lock
+# More specific JS artifacts
+*.js.map
+# Ignore generated docs
+/docs/
