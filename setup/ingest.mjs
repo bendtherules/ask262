@@ -18,7 +18,7 @@ Settings.embedModel = new OllamaEmbedding({
 
 const SPEC_DIR = './spec-built/multipage';
 const CODE_DIR = './engine262/src';
-import { STORAGE_DIR } from './constants.mjs';
+import { STORAGE_DIR } from '../constants.mjs';
 
 // Initialize a SentenceSplitter with even smaller chunk size
 const sentenceSplitter = new SentenceSplitter({ chunkSize: 256, chunkOverlap: 20 });

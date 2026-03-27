@@ -6,7 +6,7 @@ import { Graph } from 'graphology';
 
 const SPEC_DIR = './spec-built/multipage';
 const CODE_DIR = './engine262/src';
-import { GRAPH_FILE } from './constants.mjs';
+import { GRAPH_FILE } from '../constants.mjs';
 
 async function buildGraph() {
   const graph = new Graph({ multi: true });
