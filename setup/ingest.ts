@@ -10,16 +10,12 @@ import {
   storageContextFromDefaults,
   VectorStoreIndex,
 } from "llamaindex";
+import { SPEC_DIR, STORAGE_DIR } from "../constants";
 
 // Configure Settings
 Settings.embedModel = new OllamaEmbedding({
   model: "nomic-embed-text-v2-moe",
 });
-
-const SPEC_DIR = "./spec-built/multipage";
-const _CODE_DIR = "./engine262/src";
-
-import { STORAGE_DIR } from "../constants";
 
 // Initialize a SentenceSplitter with even smaller chunk size
 const sentenceSplitter = new SentenceSplitter({
