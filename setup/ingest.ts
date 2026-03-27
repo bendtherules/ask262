@@ -97,7 +97,7 @@ async function main() {
   console.log("Building index (this might take a while with local Ollama)...");
 
   const BATCH_SIZE = 50;
-  let index: any;
+  let index: VectorStoreIndex | null = null;
 
   // Try to load existing index if any
   try {
