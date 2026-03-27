@@ -32,8 +32,8 @@ coverage/
 
 # Ignore resources
 ## Spec
-./spec-built/
+/spec-built/
 
 ## Vector stores
-./storage/
-./graphology/
+/storage/
+/graphology/
