@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import { OllamaEmbedding } from "@llamaindex/ollama";
 import { OpenAI } from "@llamaindex/openai";
-import { Graph } from "graphology";
+import Graph from "graphology";
 import {
   QueryEngineTool,
   ReActAgent,
@@ -10,7 +10,7 @@ import {
   VectorStoreIndex,
 } from "llamaindex";
 
-import { GRAPH_FILE, STORAGE_DIR } from "./constants.ts";
+import { GRAPH_FILE, STORAGE_DIR } from "./constants";
 
 // Configure Settings
 Settings.embedModel = new OllamaEmbedding({
@@ -74,7 +74,7 @@ async function main() {
         required: ["query"],
       },
     },
-    call: async ({ query }) => {
+    call: async ({ query }: { query: string }) => {
       console.log(`[Tool: graph_explorer] Querying for: ${query}`);
       let nodeId = query;
       if (!graph.hasNode(nodeId)) {

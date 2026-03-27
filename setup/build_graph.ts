@@ -2,12 +2,12 @@ import fs from "node:fs";
 import path from "node:path";
 import * as cheerio from "cheerio";
 import { glob } from "glob";
-import { Graph } from "graphology";
+import Graph from "graphology";
 
 const SPEC_DIR = "./spec-built/multipage";
 const CODE_DIR = "./engine262/src";
 
-import { GRAPH_FILE } from "../constants.ts";
+import { GRAPH_FILE } from "../constants";
 
 async function buildGraph() {
   const graph = new Graph({ multi: true });

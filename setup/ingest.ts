@@ -19,7 +19,7 @@ Settings.embedModel = new OllamaEmbedding({
 const SPEC_DIR = "./spec-built/multipage";
 const _CODE_DIR = "./engine262/src";
 
-import { STORAGE_DIR } from "../constants.ts";
+import { STORAGE_DIR } from "../constants";
 
 // Initialize a SentenceSplitter with even smaller chunk size
 const sentenceSplitter = new SentenceSplitter({
@@ -29,7 +29,7 @@ const sentenceSplitter = new SentenceSplitter({
 
 async function ingestSpec() {
   const htmlFiles = await glob(path.join(SPEC_DIR, "*.html"));
-  const documents = [];
+  const documents: Document[] = [];
 
   for (const file of htmlFiles) {
     const content = fs.readFileSync(file, "utf-8");
@@ -97,7 +97,7 @@ async function main() {
   console.log("Building index (this might take a while with local Ollama)...");
 
   const BATCH_SIZE = 50;
-  let index;
+  let index: any;
 
   // Try to load existing index if any
   try {
