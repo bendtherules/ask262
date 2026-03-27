@@ -32,7 +32,7 @@ coverage/
 
 # Ignore resources
 ## Spec
-/spec-built/
+
 
 ## Vector stores
 /storage/
