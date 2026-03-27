@@ -1,0 +1,11 @@
+test
+src
+declaration/.tsbuildinfo
+declaration/**/*.map
+scripts
+coverage
+rollup.config.mts
+.eslintcache
+.eslintrc.js
+.eslintignore
+.travis.yml
