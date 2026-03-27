@@ -1,11 +1,12 @@
-import fs from "fs";
-import path from "path";
-import { glob } from "glob";
+import fs from "node:fs";
+import path from "node:path";
 import * as cheerio from "cheerio";
+import { glob } from "glob";
 import { Graph } from "graphology";
 
 const SPEC_DIR = "./spec-built/multipage";
 const CODE_DIR = "./engine262/src";
+
 import { GRAPH_FILE } from "../constants.ts";
 
 async function buildGraph() {
@@ -24,7 +25,7 @@ async function buildGraph() {
     const content = fs.readFileSync(file, "utf-8");
     const $ = cheerio.load(content);
 
-    $("emu-clause").each((i, elem) => {
+    $("emu-clause").each((_i, elem) => {
       const id = $(elem).attr("id");
       const title = $(elem).find("h1").first().text().trim();
 
@@ -36,12 +37,12 @@ async function buildGraph() {
         // Extract internal links
         $(elem)
           .find("a[href]")
-          .each((j, link) => {
+          .each((_j, link) => {
             const href = $(link).attr("href");
-            if (href && href.includes("#")) {
-              const [targetFile, targetId] = href.split("#");
+            if (href?.includes("#")) {
+              const [_targetFile, targetId] = href.split("#");
               // We only care about links to other sections for now
-              if (targetId && targetId.startsWith("sec-")) {
+              if (targetId?.startsWith("sec-")) {
                 // Add relationship later if nodes exist
               }
             }
@@ -54,14 +55,14 @@ async function buildGraph() {
   for (const file of htmlFiles) {
     const content = fs.readFileSync(file, "utf-8");
     const $ = cheerio.load(content);
-    $("emu-clause").each((i, elem) => {
+    $("emu-clause").each((_i, elem) => {
       const sourceId = $(elem).attr("id");
       if (sourceId && graph.hasNode(sourceId)) {
         $(elem)
           .find("a[href]")
-          .each((j, link) => {
+          .each((_j, link) => {
             const href = $(link).attr("href");
-            if (href && href.includes("#")) {
+            if (href?.includes("#")) {
               const [, targetId] = href.split("#");
               if (
                 targetId &&

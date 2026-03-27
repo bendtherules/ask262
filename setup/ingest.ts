@@ -1,15 +1,15 @@
-import fs from "fs";
-import path from "path";
-import { glob } from "glob";
+import fs from "node:fs";
+import path from "node:path";
+import { OllamaEmbedding } from "@llamaindex/ollama";
 import * as cheerio from "cheerio";
+import { glob } from "glob";
 import {
   Document,
-  VectorStoreIndex,
+  SentenceSplitter,
   Settings,
   storageContextFromDefaults,
-  SentenceSplitter,
+  VectorStoreIndex,
 } from "llamaindex";
-import { OllamaEmbedding } from "@llamaindex/ollama";
 
 // Configure Settings
 Settings.embedModel = new OllamaEmbedding({
@@ -17,7 +17,8 @@ Settings.embedModel = new OllamaEmbedding({
 });
 
 const SPEC_DIR = "./spec-built/multipage";
-const CODE_DIR = "./engine262/src";
+const _CODE_DIR = "./engine262/src";
+
 import { STORAGE_DIR } from "../constants.ts";
 
 // Initialize a SentenceSplitter with even smaller chunk size
@@ -34,7 +35,7 @@ async function ingestSpec() {
     const content = fs.readFileSync(file, "utf-8");
     const $ = cheerio.load(content);
 
-    $("emu-clause").each((i, elem) => {
+    $("emu-clause").each((_i, elem) => {
       const id = $(elem).attr("id");
       const title = $(elem).find("h1").first().text().trim();
       // Only extract immediate text to avoid excessive chunking of child sections
@@ -104,7 +105,7 @@ async function main() {
       storageContext,
     });
     console.log("Existing index found, continuing ingestion...");
-  } catch (e) {
+  } catch (_e) {
     console.log("No existing index found, starting fresh.");
   }
 

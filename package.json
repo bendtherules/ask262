@@ -3,8 +3,11 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
+    "type-check": "tsc --noEmit",
     "lint": "biome check .",
-    "format": "biome format .",
+    "lint:fix": "biome check . --write",
+    "lint:fix:unsafe": "biome check . --write --unsafe",
+    "format:fix": "biome format . --write",
     "ingest": "bun run setup/ingest.ts",
     "agent": "bun run agent.ts",
     "build": "bun run setup/build_graph.ts",
@@ -28,6 +31,7 @@
     "llamaindex": "^0.12.1"
   },
   "devDependencies": {
+    "typescript": "^5.5.2",
     "@biomejs/biome": "^2.4.9"
   }
 }

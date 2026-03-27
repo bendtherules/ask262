@@ -5,5 +5,5 @@
     "lineWidth": 80,
     "lineEnding": "lf"
   },
-  "files": { "includes": ["**", "!!spec-built/**", "!!engine262/**"] }
+  "files": { "includes": ["**", "!!spec-built", "!!engine262", "!!graphology"] }
 }

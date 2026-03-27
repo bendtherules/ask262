@@ -1,16 +1,16 @@
 import fs from "node:fs";
-import {
-  VectorStoreIndex,
-  storageContextFromDefaults,
-  Settings,
-  QueryEngineTool,
-  ReActAgent,
-} from "llamaindex";
 import { OllamaEmbedding } from "@llamaindex/ollama";
 import { OpenAI } from "@llamaindex/openai";
 import { Graph } from "graphology";
+import {
+  QueryEngineTool,
+  ReActAgent,
+  Settings,
+  storageContextFromDefaults,
+  VectorStoreIndex,
+} from "llamaindex";
 
-import { STORAGE_DIR, GRAPH_FILE } from "./constants.ts";
+import { GRAPH_FILE, STORAGE_DIR } from "./constants.ts";
 
 // Configure Settings
 Settings.embedModel = new OllamaEmbedding({
@@ -94,7 +94,7 @@ async function main() {
           const attr = graph.getNodeAttributes(neighbor);
           const edges = graph.edges(nodeId, neighbor);
           const edgeAttr = graph.getEdgeAttributes(edges[0]);
-          result += `- ${neighbor} (${attr.type}) via ${edgeAttr.type}${attr.title ? ": " + attr.title : ""}\n`;
+          result += `- ${neighbor} (${attr.type}) via ${edgeAttr.type}${attr.title ? `: ${attr.title}` : ""}\n`;
         });
         return result;
       }
