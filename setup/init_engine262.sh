@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# Shallow clone the engine262 repository as a git submodule
-# Usage: ./add_engine_submodule.sh
-# This will add the submodule at ./engine262 with a depth of 1 (shallow clone)
+# Add the engine262 repository as a git subtree (squashed)
+# Usage: ./setup/init_engine262.sh
+# This will add the repository at ./engine262 using a squashed subtree
 
 set -euo pipefail
 
@@ -9,10 +9,12 @@ REPO_URL="https://github.com/bendtherules/engine262"
 REPO_ROOT=$(git rev-parse --show-toplevel)
 TARGET_DIR="${REPO_ROOT}/engine262"
 
-# Add the submodule with shallow clone
-git submodule add --depth 1 "$REPO_URL" "$TARGET_DIR"
+# Add the repository as a git subtree (squashed)
+# If the target directory already exists, assume the subtree is present.
+if [ ! -d "$TARGET_DIR" ]; then
+  git -C "${REPO_ROOT}" subtree add --prefix=engine262 "$REPO_URL" main --squash
+else
+  echo "Subtree already present at $TARGET_DIR"
+fi
 
-# Initialize and update the submodule (fetches the shallow copy)
-git submodule update --init --depth 1 "$TARGET_DIR"
-
-echo "Submodule added and initialized at ./$TARGET_DIR"
+echo "Subtree added and initialized at ./$TARGET_DIR"
