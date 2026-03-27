@@ -10,8 +10,7 @@ import { OllamaEmbedding } from '@llamaindex/ollama';
 import { OpenAI } from '@llamaindex/openai';
 import { Graph } from 'graphology';
 
-const STORAGE_DIR = './storage';
-const GRAPH_FILE = './graph.json';
+import { STORAGE_DIR, GRAPH_FILE } from './constants.mjs';
 
 // Configure Settings
 Settings.embedModel = new OllamaEmbedding({

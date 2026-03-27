@@ -18,7 +18,7 @@ Settings.embedModel = new OllamaEmbedding({
 
 const SPEC_DIR = './spec-built/multipage';
 const CODE_DIR = './engine262/src';
-const STORAGE_DIR = './storage';
+import { STORAGE_DIR } from './constants.mjs';
 
 // Initialize a SentenceSplitter with even smaller chunk size
 const sentenceSplitter = new SentenceSplitter({ chunkSize: 256, chunkOverlap: 20 });
@@ -113,7 +113,7 @@ async function main() {
     }
   }
 
-  console.log("Index built and persisted to ./storage");
+  console.log(`Index built and persisted to ${STORAGE_DIR}`);
 }
 
 main().catch(console.error);
