@@ -1,0 +1,9 @@
+{
+  "formatter": {
+    "indentStyle": "space",
+    "indentWidth": 2,
+    "lineWidth": 80,
+    "lineEnding": "lf"
+  },
+  "files": { "includes": ["**", "!!spec-built/**", "!!engine262/**"] }
+}
