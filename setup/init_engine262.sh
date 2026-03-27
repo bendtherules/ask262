@@ -6,7 +6,8 @@
 set -euo pipefail
 
 REPO_URL="https://github.com/bendtherules/engine262"
-TARGET_DIR="./engine262"
+REPO_ROOT=$(git rev-parse --show-toplevel)
+TARGET_DIR="${REPO_ROOT}/engine262"
 
 # Add the submodule with shallow clone
 git submodule add --depth 1 "$REPO_URL" "$TARGET_DIR"
