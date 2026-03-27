@@ -11,6 +11,10 @@ import { GRAPH_FILE } from '../constants.mjs';
 async function buildGraph() {
   const graph = new Graph({ multi: true });
   const htmlFiles = await glob(path.join(SPEC_DIR, '*.html'));
+  console.log(`Found ${htmlFiles.length} specification HTML file(s) in ${SPEC_DIR}`);
+  if (htmlFiles.length === 0) {
+    console.warn(`Warning: No specification HTML files found in ${SPEC_DIR}`);
+  }
 
   console.log("Processing specification for graph...");
   for (const file of htmlFiles) {
@@ -66,6 +70,10 @@ async function buildGraph() {
 
   console.log("Processing code for graph...");
   const jsFiles = await glob(path.join(CODE_DIR, '**/*.mts'));
+  console.log(`Found ${jsFiles.length} code file(s) in ${CODE_DIR}`);
+  if (jsFiles.length === 0) {
+    console.warn(`Warning: No code files found in ${CODE_DIR}`);
+  }
 
   for (const file of jsFiles) {
     const fileName = path.basename(file);
