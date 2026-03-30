@@ -24,8 +24,8 @@ async function buildGraph() {
     const fileName = path.basename(file);
     const content = fs.readFileSync(file, "utf-8");
     const $ = cheerio.load(content);
-
-    $("emu-clause").each((_i, elem) => {
+    const $container = $("#spec-container");
+    $container.find("emu-clause").each((_i, elem) => {
       const id = $(elem).attr("id");
       const title = $(elem).find("h1").first().text().trim();
 
@@ -55,7 +55,8 @@ async function buildGraph() {
   for (const file of htmlFiles) {
     const content = fs.readFileSync(file, "utf-8");
     const $ = cheerio.load(content);
-    $("emu-clause").each((_i, elem) => {
+    const $container = $("#spec-container");
+    $container.find("emu-clause").each((_i, elem) => {
       const sourceId = $(elem).attr("id");
       if (sourceId && graph.hasNode(sourceId)) {
         $(elem)
