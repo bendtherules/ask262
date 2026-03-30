@@ -44,7 +44,9 @@ File: /ecmascript-data-types-and-values.html#table-additional-essential-internal
 
 Regex to search all -
 ```
-\[\[GetPrototypeOf\]\]|\[\[SetPrototypeOf\]\]|\[\[IsExtensible\]\]|\[\[PreventExtensions\]\]|\[\[GetOwnProperty\]\]|\[\[DefineOwnProperty\]\]|\[\[HasProperty\]\]|\[\[Get\]\]|\[\[Set\]\]|\[\[Delete\]\]|\[\[OwnPropertyKeys\]\]|\[\[Call\]\]|\[\[Construct\]\]
+\[\[GetPrototypeOf\]\]|\[\[SetPrototypeOf\]\]|\[\[IsExtensible\]\]|\[\[PreventExtensions\]\]|\[\[GetOwnProperty\]\]|\[\[DefineOwnProperty\]\]|\[\[HasProperty\]\]|\[\[Delete\]\]|\[\[OwnPropertyKeys\]\]|\[\[Call\]\]|\[\[Construct\]\]
+
+\[\[Get\]\]|\[\[Set\]\]
 ```
 
 Problems -
