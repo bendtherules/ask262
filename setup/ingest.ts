@@ -12,17 +12,29 @@ import {
 } from "llamaindex";
 import { SPEC_DIR, STORAGE_DIR } from "../constants";
 
-// Configure Settings
+// Configure LlamaIndex to use local Ollama embeddings
+// This creates vector embeddings for semantic search without external APIs
 Settings.embedModel = new OllamaEmbedding({
   model: "nomic-embed-text-v2-moe",
 });
 
-// Initialize a SentenceSplitter with even smaller chunk size
+// Text chunking configuration to keep chunks small and focused
+// Smaller chunks improve retrieval accuracy for technical documentation
 const sentenceSplitter = new SentenceSplitter({
   chunkSize: 256,
   chunkOverlap: 20,
 });
 
+/**
+ * Extracts ECMAScript specification sections from HTML files and converts them
+ * to Documents for vector indexing. Each section (emu-clause) becomes a separate
+ * document with metadata for tracking.
+ *
+ * Note: Only extracts text from the immediate section, excluding child sections
+ * to prevent duplicate content and maintain granularity.
+ *
+ * @returns Array of Documents ready for indexing
+ */
 async function ingestSpec() {
   const htmlFiles = await glob(path.join(SPEC_DIR, "*.html"));
   const documents: Document[] = [];
@@ -61,8 +73,14 @@ async function ingestSpec() {
   return documents;
 }
 
-// ingestCode function removed as requested
-
+/**
+ * Main execution pipeline:
+ * 1. Ingest specification HTML files and convert to documents
+ * 2. Split documents into smaller text chunks (nodes)
+ * 3. Filter out oversized chunks that could exceed LLM context limits
+ * 4. Build a vector index in batches to handle large document sets
+ * 5. Persist the index to disk for later retrieval
+ */
 async function main() {
   console.log("Ingesting specification...");
   const specDocs = await ingestSpec();
@@ -105,6 +123,7 @@ async function main() {
     console.log("No existing index found, starting fresh.");
   }
 
+  // Process nodes in batches to avoid overwhelming the embedding service
   for (let i = 0; i < nodes.length; i += BATCH_SIZE) {
     const batch = nodes.slice(i, i + BATCH_SIZE);
     console.log(
