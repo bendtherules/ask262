@@ -152,29 +152,35 @@ async function ingestSpec(): Promise<Document[]> {
             }),
           );
         }
-
-        // Skip adding the full section since we've broken it into parts
-        if (subDocsCreated || remainingText) {
-          return;
-        }
+      } else {
+        // Add the full section document (for smaller sections or when no breakdown happened)
+        documents.push(
+          new Document({
+            pageContent: text,
+            metadata: {
+              source: file,
+              sectionid: id,
+              sectiontitle: title,
+              type: "specification",
+              parentsectionid: null,
+              breakdowntag: null,
+            },
+          }),
+        );
       }
 
-      // Add the full section document (for smaller sections or when no breakdown happened)
-      documents.push(
-        new Document({
-          pageContent: text,
-          metadata: {
-            source: file,
-            sectionid: id,
-            sectiontitle: title,
-            type: "specification",
-            parentsectionid: null,
-            breakdowntag: null,
-          },
-        }),
-      );
     });
   }
+
+  // Log warnings for any large documents in the final collection
+  for (const doc of documents) {
+    if (doc.pageContent.length > LARGE_DOC_THRESHOLD) {
+      const id = doc.metadata.sectionid || "unknown";
+      const size = doc.pageContent.length;
+      console.warn(`⚠️  Warning: Final document ${id} is large (${size} chars)`);
+    }
+  }
+
   return documents;
 }
 
