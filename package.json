@@ -28,7 +28,8 @@
     "cheerio": "^1.2.0",
     "glob": "^13.0.6",
     "graphology": "^0.26.0",
-    "langchain": "^0.2.0"
+    "langchain": "^0.2.0",
+    "ora": "^9.3.0"
   },
   "devDependencies": {
     "typescript": "^5.5.2",

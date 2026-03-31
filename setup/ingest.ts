@@ -3,12 +3,12 @@ import path from "node:path";
 import readline from "node:readline";
 import * as lancedbSdk from "@lancedb/lancedb";
 import { Index } from "@lancedb/lancedb";
-import { LanceDB } from "@langchain/community/vectorstores/lancedb";
 import { Document } from "@langchain/core/documents";
 import { OllamaEmbeddings } from "@langchain/ollama";
 import { RecursiveCharacterTextSplitter } from "@langchain/textsplitters";
 import * as cheerio from "cheerio";
 import { glob } from "glob";
+import ora from "ora";
 import { SPEC_DIR, STORAGE_DIR } from "../constants";
 
 const embeddings = new OllamaEmbeddings({
@@ -23,6 +23,41 @@ const textSplitter = new RecursiveCharacterTextSplitter({
 
 const BREAKDOWN_TAGS = ["emu-table", "emu-grammar"] as const;
 const LARGE_DOC_THRESHOLD = 5000;
+const BATCH_SIZE = 10;
+
+async function generateEmbeddingsWithProgress(
+  documents: Document[],
+): Promise<number[][]> {
+  const total = documents.length;
+  const vectors: number[][] = [];
+  const spinner = ora({
+    text: `Generating embeddings (0/${total})...`,
+    discardStdin: false,
+  }).start();
+
+  try {
+    for (let i = 0; i < total; i += BATCH_SIZE) {
+      const batch = documents.slice(i, i + BATCH_SIZE);
+      const batchTexts = batch.map((doc) => doc.pageContent);
+      const batchVectors = await embeddings.embedDocuments(batchTexts);
+
+      vectors.push(...batchVectors);
+
+      const currentDoc = batch[0];
+      const progress = `${i + batch.length}/${total}`;
+      const meta =
+        currentDoc.metadata.sectiontitle || currentDoc.metadata.sectionid || "";
+      const truncatedMeta = meta.length > 40 ? `${meta.slice(0, 37)}...` : meta;
+      spinner.text = `Generating embeddings (${progress}): ${truncatedMeta}`;
+    }
+    spinner.succeed(`Generated ${vectors.length} embeddings`);
+  } catch (error) {
+    spinner.fail(`Failed to generate embeddings: ${error}`);
+    throw error;
+  }
+
+  return vectors;
+}
 
 function askUser(question: string): Promise<boolean> {
   const rl = readline.createInterface({
@@ -154,10 +189,17 @@ async function main() {
 
   const db = await lancedbSdk.connect(STORAGE_DIR);
 
-  let table: lancedbSdk.Table;
+  // Check if table exists and handle overwrite
+  let tableExists = false;
   try {
-    table = await db.openTable("spec_vectors");
+    await db.openTable("spec_vectors");
+    tableExists = true;
     console.log("Existing table found.");
+  } catch {
+    console.log("No existing table found, creating fresh...");
+  }
+
+  if (tableExists) {
     const shouldOverwrite = await askUser(
       "Do you want to overwrite the existing vector store?",
     );
@@ -167,19 +209,25 @@ async function main() {
     }
     console.log("Overwriting existing table...");
     await db.dropTable("spec_vectors");
-    table = await db.createTable("spec_vectors", []);
-  } catch {
-    console.log("No existing table found, creating fresh...");
-    table = await db.createTable("spec_vectors", []);
   }
+
+  console.log("Generating embeddings...");
+  const vectors = await generateEmbeddingsWithProgress(splitDocs);
+
+  console.log("Creating table with documents...");
+  // Prepare data records with vector, text, and metadata
+  const data = splitDocs.map((doc, i) => ({
+    vector: vectors[i],
+    text: doc.pageContent,
+    ...doc.metadata,
+  }));
+
+  // Create table with the data
+  const table = await db.createTable("spec_vectors", data);
 
   console.log("Creating scalar indexes...");
   await table.createIndex("sectionid", { config: Index.btree() });
   await table.createIndex("type", { config: Index.btree() });
-
-  console.log("Storing documents with embeddings...");
-  const vectorStore = new LanceDB(embeddings, { table });
-  await vectorStore.addDocuments(splitDocs);
 
   console.log(`Index built and persisted to ${STORAGE_DIR}`);
 }
