@@ -7,18 +7,19 @@
 ## Summary
 
 This plan addresses two issues in the spec ingestion process:
-1. **Parent Awareness**: Parent sections now contain references to their subsections
-2. **Sequential + Recursive Breakdown**: Large sections are broken down by trying tags sequentially, and extracted subsections are recursively checked and broken down if still large
+1. **Parent Awareness**: Parent sections now contain inline references to their subsections exactly where content was removed
+2. **Unified Breakdown Logic**: Single `breakDownSection` function handles all structural elements using `alwaysBreak` flag
 
 **Key Features:**
-- Always extract `emu-clause` with titles first
-- Breakdown tags tried in order: `emu-table` → `emu-grammar` → `td` → `p`
-- Continue to next tag only if previous didn't reduce size enough
+- **Unified breakdown**: `emu-clause`, `emu-table`, `emu-grammar`, `td`, `p` all use same logic
+- `alwaysBreak: true` for `emu-clause` - always extracts children to build hierarchy  
+- `alwaysBreak: false` for other tags - only extracts if content > 5000 chars
+- **Sequential tags**: Tried in order (emu-clause → emu-table → emu-grammar → td → p)
 - **Recursive check**: Each extracted subsection is also checked and can be further broken down
 - **Hierarchical IDs**: Show full path like `sec-if-statement-emu-table-1-td-2`
+- **Inline markers**: `[Subsection available: title "X" at sectionid: `ID`]` appears where content was removed
 - **Max depth**: 3 levels prevents excessive nesting
 - **Metadata tracking**: `subsections` array lists children (breakdown type derived from IDs)
-- **Parent references**: Agent can discover and fetch the full hierarchy
 
 ## Files to Modify
 
@@ -28,36 +29,49 @@ This plan addresses two issues in the spec ingestion process:
 
 ## Implementation Details
 
-### Breakdown Strategy
+### Unified Breakdown Strategy
 
-**Phase 1: Extract emu-clause with titles**
-- Parse all `emu-clause` elements
-- Extract `id`, `title` (from `h1`), and content
-- Always keep these as primary structure
+All structural elements use the same breakdown logic with an `alwaysBreak` flag:
 
-**Phase 2: Recursive sequential breakdown**
-For each section (emu-clause or subsection) > 5000 chars:
-1. Try `emu-table` - Extract tables as subsections
-2. If still large, try `emu-grammar` - Extract grammar productions  
-3. If still large, try `td` - Break table cells
-4. If still large, try `p` - Break paragraphs
+| Tag | alwaysBreak | Extract children? | When to extract |
+|-----|-------------|-------------------|-----------------|
+| `emu-clause` | `true` | Always | Defines hierarchy |
+| `emu-table` | `false` | Only if > threshold | Large tables |
+| `emu-grammar` | `false` | Only if > threshold | Large grammars |
+| `td` | `false` | Only if > threshold | Large table cells |
+| `p` | `false` | Only if > threshold | Large prose |
 
-**Phase 3: Recursive check on extracted subsections**
-- Each extracted subsection is ALSO checked for size
-- If still > 5000 chars, recursively apply breakdown starting from the NEXT tag
-- Example: `sec-if-statement-emu-table-1` is 8000 chars → try `emu-grammar`, then `td`, then `p`
-
-**Stop condition:** All chunks (at any level) are < threshold
+**Flow:**
+1. Start with root content (full HTML or section)
+2. Try `emu-clause` first - always extract children to build hierarchy
+3. For each extracted emu-clause content, apply sequential breakdown
+4. Try `emu-table` → `emu-grammar` → `td` → `p` only if content still large
+5. Recursively process extracted subsections
 
 ### Configuration
 
 ```typescript
 const LARGE_DOC_THRESHOLD = 5000;
-const BREAKDOWN_TAGS = ["emu-table", "emu-grammar", "td", "p"] as const;
 const MAX_RECURSION_DEPTH = 3;
+
+interface BreakdownTag {
+  tag: string;
+  alwaysBreak: boolean;
+  titleSelector?: string;  // CSS selector to extract title
+  idSelector?: string;     // CSS selector or attribute to extract ID
+  idAttribute?: string;    // HTML attribute containing ID (default: "id")
+}
+
+const BREAKDOWN_TAGS: BreakdownTag[] = [
+  { tag: "emu-clause", alwaysBreak: true, titleSelector: "h1", idAttribute: "id" },
+  { tag: "emu-table", alwaysBreak: false, titleSelector: "caption" },
+  { tag: "emu-grammar", alwaysBreak: false },
+  { tag: "td", alwaysBreak: false },
+  { tag: "p", alwaysBreak: false },
+];
 ```
 
-### Breakdown Function
+### Unified Breakdown Function
 
 ```typescript
 interface BreakdownResult {
@@ -69,44 +83,46 @@ interface BreakdownResult {
   subsectionDocs: Document[];
 }
 
-function breakDownSection(
-  html: string,
-  baseId: string,
-  baseTitle: string,
-  sourceFile: string,
-  parentId: string | null,
-  depth: number = 0
-): BreakdownResult {
+interface BreakdownContext {
+  html: string;
+  baseId: string;
+  baseTitle: string;
+  sourceFile: string;
+  parentId: string | null;
+  depth: number;
+  startFromIndex: number;  // Which tag in BREAKDOWN_TAGS to start from
+}
+
+function breakDownSection(ctx: BreakdownContext): BreakdownResult {
+  const { html, baseId, baseTitle, sourceFile, parentId, depth, startFromIndex } = ctx;
+  
   const $ = cheerio.load(`<div>${html}</div>`);
   const $section = $("div").first();
-  
   const fullText = $section.text().trim();
   
-  // Base case: small enough or max depth
-  if (fullText.length <= LARGE_DOC_THRESHOLD || depth >= MAX_RECURSION_DEPTH) {
-    return {
-      parentDoc: {
-        content: html,
-        tagUsed: null,
-        subsections: []
-      },
-      subsectionDocs: []
-    };
-  }
-  
-  // Try each breakdown tag sequentially
+  // Try each breakdown tag starting from startFromIndex
   const subsectionIds: string[] = [];
   const subsectionDocs: Document[] = [];
   let remainingHtml = html;
   let tagUsed: string | null = null;
   
-  for (let i = 0; i < BREAKDOWN_TAGS.length; i++) {
-    const tagName = BREAKDOWN_TAGS[i];
+  for (let i = startFromIndex; i < BREAKDOWN_TAGS.length; i++) {
+    const tagConfig = BREAKDOWN_TAGS[i];
+    const { tag: tagName, alwaysBreak, titleSelector, idSelector, idAttribute = "id" } = tagConfig;
+    
     const $temp = cheerio.load(`<div>${remainingHtml}</div>`);
     const $tempSection = $("div").first();
     
     // Check if this tag exists
     if ($tempSection.find(tagName).length === 0) {
+      continue;
+    }
+    
+    // Determine if we should break
+    const shouldBreak = alwaysBreak || fullText.length > LARGE_DOC_THRESHOLD;
+    
+    if (!shouldBreak) {
+      // Skip this tag, continue to next
       continue;
     }
     
@@ -117,30 +133,53 @@ function breakDownSection(
       const elemText = $(elem).text().trim();
       
       if (elemText) {
-        const subId = `${baseId}-${tagName}-${counter}`;
+        // Get element title if selector provided
+        let elemTitle = "";
+        if (titleSelector) {
+          elemTitle = $(elem).find(titleSelector).first().text().trim() ||
+                      $(elem).attr("id") || 
+                      "";
+        }
+        
+        // Get element ID using configurable selectors
+        let elemId: string | undefined;
+        
+        if (idSelector) {
+          // Use CSS selector to find ID
+          elemId = $(elem).find(idSelector).first().attr(idAttribute) ||
+                   $(elem).find(idSelector).first().text().trim();
+        } else {
+          // Use attribute directly from element
+          elemId = $(elem).attr(idAttribute);
+        }
+        
+        const subId = elemId || `${baseId}-${tagName}-${counter}`;
+        
         subsectionIds.push(subId);
         
-        // Recursively check if this subsection needs further breakdown
-        // Start from next tag in sequence (i+1)
-        const subResult = breakDownSection(
-          elemHtml,
-          subId,
-          `${baseTitle} [${tagName}]`,
+        // Always continue with next tag for more granular breakdown
+        // (Structural tags like emu-clause have nested ones removed, so no risk of re-processing)
+        const nextStartIndex = i + 1;
+        
+        const subResult = breakDownSection({
+          html: elemHtml,
+          baseId: subId,
+          baseTitle: elemTitle || `${baseTitle} [${tagName}]`,
           sourceFile,
-          baseId,
-          depth + 1
-        );
+          parentId: baseId,
+          depth: depth + 1,
+          startFromIndex: nextStartIndex,
+        });
         
         // If subsection was broken down further
         if (subResult.subsectionDocs.length > 0) {
           subsectionDocs.push(...subResult.subsectionDocs);
           
-          // Also add the subsection's parent document
+          // Add subsection's parent document if it has children
           if (subResult.parentDoc.subsections.length > 0) {
             subsectionDocs.push(new Document({
               pageContent: [
-                `[Section ${subId}: ${baseTitle} [${tagName}]]`,
-                "(Section content below - subsections marked inline)",
+                `[Section ${subId}: ${elemTitle || baseTitle}]`,
                 "",
                 "---",
                 "",
@@ -149,7 +188,7 @@ function breakDownSection(
               metadata: {
                 source: sourceFile,
                 sectionid: subId,
-                sectiontitle: `${baseTitle} [${tagName}]`,
+                sectiontitle: elemTitle || `${baseTitle} [${tagName}]`,
                 type: "specification",
                 parentsectionid: baseId,
                 subsections: subResult.parentDoc.subsections,
@@ -157,13 +196,13 @@ function breakDownSection(
             }));
           }
         } else {
-          // Subsection is small enough, create leaf document
+          // Subsection is leaf - create document
           subsectionDocs.push(new Document({
             pageContent: elemText,
             metadata: {
               source: sourceFile,
               sectionid: subId,
-              sectiontitle: `${baseTitle} [${tagName}]`,
+              sectiontitle: elemTitle || `${baseTitle} [${tagName}]`,
               type: "specification",
               parentsectionid: baseId,
               subsections: [],
@@ -172,15 +211,8 @@ function breakDownSection(
         }
         
         counter++;
-        // Extract title from element if available
-        let elemTitle = "";
-        if (tagName === "emu-table") {
-          elemTitle = $(elem).find("caption").first().text().trim();
-        } else if (tagName === "emu-clause") {
-          elemTitle = $(elem).find("h1").first().text().trim();
-        }
         
-        // Replace with marker line in parent content
+        // Create marker with title if available
         const markerText = elemTitle 
           ? `[Subsection available: title "${elemTitle}" at sectionid: \`${subId}\`]`
           : `[Subsection available at sectionid: \`${subId}\`]`;
@@ -195,8 +227,9 @@ function breakDownSection(
     if (subsectionIds.length > 0) {
       tagUsed = tagName;
       
-      // If remaining is small enough, stop here
-      if (remainingText.length <= LARGE_DOC_THRESHOLD) {
+      // For alwaysBreak tags, we don't check size - we extracted all children
+      // For conditional tags, stop if remaining content is small enough
+      if (!alwaysBreak && remainingText.length <= LARGE_DOC_THRESHOLD) {
         break;
       }
     }
@@ -213,7 +246,54 @@ function breakDownSection(
 }
 ```
 
-### Document Creation with Subsections
+### Document Creation with Unified Breakdown
+
+```typescript
+async function ingestSpec(): Promise<Document[]> {
+  const htmlFiles = await glob(path.join(SPEC_DIR, "*.html"));
+  const documents: Document[] = [];
+
+  for (const file of htmlFiles) {
+    const content = fs.readFileSync(file, "utf-8");
+    const $ = cheerio.load(content);
+    
+    // Get the main spec content (excluding nested emu-clause for now)
+    const mainContent = $("body").html() || "";
+    
+    // Process entire document starting with emu-clause (alwaysBreak=true)
+    const result = breakDownSection({
+      html: mainContent,
+      baseId: "root",
+      baseTitle: "ECMAScript Specification",
+      sourceFile: file,
+      parentId: null,
+      depth: 0,
+      startFromIndex: 0,  // Start with emu-clause (index 0)
+    });
+    
+    // Add all documents from breakdown
+    documents.push(...result.subsectionDocs);
+    
+    // If root has remaining content, add as document
+    if (result.parentDoc.content.trim()) {
+      documents.push(new Document({
+        pageContent: cheerio.load(result.parentDoc.content).text().trim(),
+        metadata: {
+          source: file,
+          sectionid: "root",
+          sectiontitle: "ECMAScript Specification",
+          type: "specification",
+          parentsectionid: null,
+          subsections: result.parentDoc.subsections,
+        },
+      }));
+    }
+  }
+  return documents;
+}
+```
+
+### Simplified Alternative (Direct emu-clause Processing)
 
 ```typescript
 async function ingestSpec(): Promise<Document[]> {
@@ -224,28 +304,36 @@ async function ingestSpec(): Promise<Document[]> {
     const content = fs.readFileSync(file, "utf-8");
     const $ = cheerio.load(content);
 
+    // Process each top-level emu-clause
     $("emu-clause").each((_i, elem) => {
       const id = $(elem).attr("id");
       const title = $(elem).find("h1").first().text().trim();
       const html = $(elem)
         .clone()
-        .children("emu-clause")
+        .children("emu-clause")  // Remove nested clauses
         .remove()
         .end()
         .html() || "";
 
-      if (!id || !title || !html.trim()) {
+      if (!id || !html.trim()) {
         return;
       }
 
-      // Apply recursive breakdown
-      const result = breakDownSection(html, id, title, file, null, 0);
+      // Process this emu-clause content (no emu-clause left, starts from emu-table)
+      const result = breakDownSection({
+        html,
+        baseId: id,
+        baseTitle: title || id,
+        sourceFile: file,
+        parentId: null,
+        depth: 0,
+        startFromIndex: 0,  // Start from beginning, but emu-clause already removed
+      });
       
       // Create parent document
       if (result.parentDoc.subsections.length > 0) {
         const parentContent = [
           `[Section ${id}: ${title}]`,
-          "(Section content below - subsections marked inline)",
           "",
           "---",
           "",
@@ -264,10 +352,10 @@ async function ingestSpec(): Promise<Document[]> {
           },
         }));
         
-        // Add all subsection documents (including recursively broken ones)
+        // Add all subsection documents
         documents.push(...result.subsectionDocs);
       } else {
-        // No breakdown needed - add as-is
+        // No breakdown needed - add as leaf
         documents.push(new Document({
           pageContent: cheerio.load(html).text().trim(),
           metadata: {
@@ -288,7 +376,7 @@ async function ingestSpec(): Promise<Document[]> {
 
 ### Hierarchical Structure
 
-Recursive breakdown creates nested hierarchy:
+The unified breakdown creates a consistent hierarchy:
 
 ```
 sec-if-statement (parent)
@@ -348,7 +436,6 @@ When the agent retrieves a parent chunk (has `subsections` array with items), it
 
 ```
 [Section sec-if-statement: If Statement]
-(Section content below - subsections marked inline)
 
 ---
 
@@ -370,7 +457,6 @@ When a subsection (like a large table) is also broken down:
 **Parent chunk:**
 ```
 [Section sec-if-statement: If Statement]
-(Section content below - subsections marked inline)
 
 ---
 
@@ -386,7 +472,6 @@ The result of the evaluation determines...
 **Subsection parent (table-1 broken down further by td):**
 ```
 [Section sec-if-statement-emu-table-1: If Statement [emu-table]]
-(Section content below - subsections marked inline)
 
 ---
 
@@ -397,7 +482,6 @@ Table header row...
 [Subsection available at sectionid: `sec-if-statement-emu-table-1-td-2`]
 
 Table footer...
-```
 ```
 
 **Leaf chunk (table cell):**
