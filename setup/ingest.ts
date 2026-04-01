@@ -12,18 +12,37 @@ import ora from "ora";
 import { SPEC_DIR, STORAGE_DIR } from "../constants";
 
 const embeddings = new OllamaEmbeddings({
-  model: "nomic-embed-text-v2-moe",
+  model: "qwen3-embedding:0.6b",
 });
 
-const textSplitter = new RecursiveCharacterTextSplitter({
+const htmlSplitter = new RecursiveCharacterTextSplitter({
   chunkSize: 4096,
   chunkOverlap: 100,
-  separators: ["\n\n", "\n", ". ", " ", ""],
+  separators: [
+    "<emu-note",
+    "<emu-example",
+    "<emu-table",
+    "<emu-grammar",
+    "<td",
+    // Finally, try to split along HTML tags
+    "<h1",
+    "<h2",
+    "<h3",
+    "<h4",
+    "<h5",
+    "<h6",
+    "<p",
+    "<div",
+    "<br",
+    "<li",
+    "<span",
+    "<ul",
+    "<ol",
+  ],
 });
 
-const BREAKDOWN_TAGS = ["emu-table", "emu-grammar"] as const;
-const LARGE_DOC_THRESHOLD = 5000;
-const BATCH_SIZE = 10;
+const LARGE_DOC_THRESHOLD = 5500;
+const BATCH_SIZE = 100;
 
 async function generateEmbeddingsWithProgress(
   documents: Document[],
@@ -35,24 +54,33 @@ async function generateEmbeddingsWithProgress(
     discardStdin: false,
   }).start();
 
+  let currentIndex = 0;
   try {
     for (let i = 0; i < total; i += BATCH_SIZE) {
+      currentIndex = i;
       const batch = documents.slice(i, i + BATCH_SIZE);
       const batchTexts = batch.map((doc) => doc.pageContent);
-      const batchVectors = await embeddings.embedDocuments(batchTexts);
 
-      vectors.push(...batchVectors);
-
+      // Update spinner before processing batch
       const currentDoc = batch[0];
       const progress = `${i + batch.length}/${total}`;
-      const meta =
-        currentDoc.metadata.sectiontitle || currentDoc.metadata.sectionid || "";
-      const truncatedMeta = meta.length > 40 ? `${meta.slice(0, 37)}...` : meta;
-      spinner.text = `Generating embeddings (${progress}): ${truncatedMeta}`;
+      const sectionId = currentDoc.metadata.sectionid || "unknown";
+      const contentLength = currentDoc.pageContent.length;
+      spinner.text = `Generating embeddings (${progress}): ${sectionId} (${contentLength} chars)`;
+
+      const batchVectors = await embeddings.embedDocuments(batchTexts);
+      vectors.push(...batchVectors);
     }
     spinner.succeed(`Generated ${vectors.length} embeddings`);
   } catch (error) {
+    const failedDoc = documents[currentIndex];
+    const failedSectionId = failedDoc?.metadata?.sectionid || "unknown";
+    const failedSectionTitle = failedDoc?.metadata?.sectiontitle || "unknown";
+    const failedContentLength = failedDoc?.pageContent?.length || 0;
     spinner.fail(`Failed to generate embeddings: ${error}`);
+    console.error(
+      `Debug: Failed on section ${failedSectionId} "${failedSectionTitle}" (${failedContentLength} chars)`,
+    );
     throw error;
   }
 
@@ -74,7 +102,7 @@ function askUser(question: string): Promise<boolean> {
   });
 }
 
-async function ingestSpec(): Promise<Document[]> {
+async function buildSpecDocuments(): Promise<Document[]> {
   const htmlFiles = await glob(path.join(SPEC_DIR, "*.html"));
   const documents: Document[] = [];
 
@@ -82,102 +110,125 @@ async function ingestSpec(): Promise<Document[]> {
     const content = fs.readFileSync(file, "utf-8");
     const $ = cheerio.load(content);
 
-    $("emu-clause").each((_i, elem) => {
+    // First pass: collect all sections and build hierarchy
+    const sectionMap = new Map<
+      string,
+      {
+        title: string;
+        parentId: string | null;
+        childrenIds: string[];
+        html: string;
+      }
+    >();
+
+    $("#spec-container emu-clause").each((_i, elem) => {
       const id = $(elem).attr("id");
       const title = $(elem).find("h1").first().text().trim();
-      const text = $(elem)
-        .clone()
-        .children("emu-clause")
-        .remove()
-        .end()
-        .text()
-        .trim();
 
-      if (!id || !title || !text) {
+      if (!id || !title) {
         return;
       }
 
-      // For large documents, break down by structural tags
-      if (text.length > LARGE_DOC_THRESHOLD) {
-        let subDocsCreated = false;
-        const $section = $(elem).clone();
-        $section.children("emu-clause").remove();
+      // Get parent section id
+      const parentElem = $(elem).parent("emu-clause");
+      const parentId =
+        parentElem.length > 0 ? parentElem.attr("id") || null : null;
 
-        // Extract content from each breakdown tag type
-        for (const tagName of BREAKDOWN_TAGS) {
-          let partCounter = 1;
-          $section.find(tagName).each((_, subElem) => {
-            const subText = $(subElem).text().trim();
-            const subId = `${id}-${tagName}-part-${partCounter}`;
-            partCounter++;
+      sectionMap.set(id, {
+        title,
+        parentId,
+        childrenIds: [],
+        html: $(elem).html() || "",
+      });
+    });
 
-            if (subText) {
-              documents.push(
-                new Document({
-                  pageContent: subText,
-                  metadata: {
-                    source: file,
-                    sectionid: subId,
-                    sectiontitle: `${title} [${tagName}]`,
-                    type: "specification",
-                    parentsectionid: id,
-                    breakdowntag: tagName,
-                  },
-                }),
-              );
-              subDocsCreated = true;
-            }
-          });
+    // Build children relationships
+    for (const [id, section] of sectionMap) {
+      if (section.parentId && sectionMap.has(section.parentId)) {
+        const parent = sectionMap.get(section.parentId)!;
+        parent.childrenIds.push(id);
+      }
+    }
+
+    // Second pass: create documents with formatted text
+    for (const [id, section] of sectionMap) {
+      // Parse the stored HTML and replace direct children with placeholders
+      const $section = cheerio.load(section.html).root();
+
+      // Find direct children emu-clause elements only
+      $section.children("emu-clause").each((_, childElem) => {
+        const childId = $(childElem).attr("id");
+        if (childId && sectionMap.has(childId)) {
+          const child = sectionMap.get(childId)!;
+          const placeholder = `[Subsection available: sectiontitle "${child.title}" at sectionid: \`${childId}\`]`;
+          $(childElem).replaceWith(placeholder);
+        } else {
+          $(childElem).remove();
+        }
+      });
+
+      // Remove any nested emu-clause elements that weren't direct children
+      // (shouldn't happen with proper HTML structure, but just in case)
+      $section.find("emu-clause").remove();
+
+      // Get HTML content with inline placeholders for splitting
+      const sectionHtml = $section.html() || "";
+
+      // Create temp document with HTML content for splitting
+      const tempDoc = new Document({
+        pageContent: sectionHtml,
+        metadata: {
+          source: path.basename(file),
+          sectionid: id,
+          sectiontitle: section.title,
+          type: "specification",
+        },
+      });
+
+      // Split the document
+      const chunks = await htmlSplitter.splitDocuments([tempDoc]);
+
+      // Log if large section wasn't split properly
+      if (sectionHtml.length > LARGE_DOC_THRESHOLD && chunks.length === 1) {
+        console.warn(
+          `  ⚠️ Section ${id} (${section.title}) is large (${sectionHtml.length} chars) but was NOT split (1 chunk)`,
+        );
+      }
+      for (let i = 0; i < chunks.length; i++) {
+        const chunk = chunks[i];
+        // Extract text from HTML chunk
+        let chunkText = cheerio.load(chunk.pageContent).text().trim();
+
+        // Add part reference if multiple chunks (comes first in text)
+        if (chunks.length > 1) {
+          const partRef = `[This is partial section of: sectiontitle "${section.title}" with sectionid: \`${id}\`. This is part ${i + 1} of ${chunks.length}. Use same sectionid to find other parts.]\n`;
+          chunkText = partRef + chunkText;
         }
 
-        // Extract remaining content (text outside breakdown tags)
-        const $remaining = $section.clone();
-        for (const tagName of BREAKDOWN_TAGS) {
-          $remaining.find(tagName).remove();
+        // Add parent reference at the beginning (if exists) - comes after part reference
+        if (section.parentId && sectionMap.has(section.parentId)) {
+          const parent = sectionMap.get(section.parentId)!;
+          chunkText =
+            `[Parent section available: sectiontitle "${parent.title}" at sectionid: \`${section.parentId}\`]\n` +
+            chunkText;
         }
-        const remainingText = $remaining.text().trim();
 
-        if (remainingText) {
-          documents.push(
-            new Document({
-              pageContent: remainingText,
-              metadata: {
-                source: file,
-                sectionid: `${id}-prose-part-1`,
-                sectiontitle: `${title} [prose]`,
-                type: "specification",
-                parentsectionid: id,
-                breakdowntag: "prose",
-              },
-            }),
-          );
-        }
-      } else {
-        // Add the full section document (for smaller sections or when no breakdown happened)
         documents.push(
           new Document({
-            pageContent: text,
+            pageContent: chunkText,
             metadata: {
-              source: file,
+              source: path.basename(file),
               sectionid: id,
-              sectiontitle: title,
+              sectiontitle: section.title,
               type: "specification",
-              parentsectionid: null,
-              breakdowntag: null,
+              parentsectionid: section.parentId,
+              childrensectionids: section.childrenIds,
+              partIndex: chunks.length > 1 ? i : null,
+              totalParts: chunks.length,
             },
           }),
         );
       }
-
-    });
-  }
-
-  // Log warnings for any large documents in the final collection
-  for (const doc of documents) {
-    if (doc.pageContent.length > LARGE_DOC_THRESHOLD) {
-      const id = doc.metadata.sectionid || "unknown";
-      const size = doc.pageContent.length;
-      console.warn(`⚠️  Warning: Final document ${id} is large (${size} chars)`);
     }
   }
 
@@ -185,13 +236,20 @@ async function ingestSpec(): Promise<Document[]> {
 }
 
 async function main() {
-  console.log("Ingesting specification...");
-  const specDocs = await ingestSpec();
-  console.log(`Ingested ${specDocs.length} specification sections.`);
+  console.log("Building specification documents...");
+  const specDocs = await buildSpecDocuments();
+  console.log(`Built ${specDocs.length} specification documents.`);
 
-  console.log("Splitting documents into chunks...");
-  const splitDocs = await textSplitter.splitDocuments(specDocs);
-  console.log(`Total chunks generated: ${splitDocs.length}`);
+  // Check for any large documents
+  for (const doc of specDocs) {
+    if (doc.pageContent.length > LARGE_DOC_THRESHOLD) {
+      const id = doc.metadata.sectionid || "unknown";
+      const title = doc.metadata.sectiontitle || "unknown";
+      console.warn(
+        `⚠️  Warning: Document ${id} "${title}" is large (${doc.pageContent.length} chars)`,
+      );
+    }
+  }
 
   const db = await lancedbSdk.connect(STORAGE_DIR);
 
@@ -218,11 +276,11 @@ async function main() {
   }
 
   console.log("Generating embeddings...");
-  const vectors = await generateEmbeddingsWithProgress(splitDocs);
+  const vectors = await generateEmbeddingsWithProgress(specDocs);
 
   console.log("Creating table with documents...");
   // Prepare data records with vector, text, and metadata
-  const data = splitDocs.map((doc, i) => ({
+  const data = specDocs.map((doc, i) => ({
     vector: vectors[i],
     text: doc.pageContent,
     ...doc.metadata,
