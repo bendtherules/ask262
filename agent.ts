@@ -2,11 +2,12 @@ import fs from "node:fs";
 import * as lancedbSdk from "@lancedb/lancedb";
 import { LanceDB } from "@langchain/community/vectorstores/lancedb";
 import { ChatPromptTemplate } from "@langchain/core/prompts";
-import { DynamicTool } from "@langchain/core/tools";
+import { DynamicStructuredTool } from "@langchain/core/tools";
 import { OllamaEmbeddings } from "@langchain/ollama";
 import { ChatOpenAI } from "@langchain/openai";
 import Graph from "graphology";
 import { AgentExecutor, createReactAgent } from "langchain/agents";
+import { z } from "zod";
 
 import { GRAPH_FILE, STORAGE_DIR } from "./constants";
 
@@ -83,13 +84,18 @@ const llm = new ChatOpenAI({
 const systemPrompt = `You are an expert in the ECMAScript specification and its implementation in engine262.
 Your goal is to explain how specific parts of the language work by combining information from the provided tools.
 
+Available tools: {tool_names}
+{tools}
+
 CRITICAL INSTRUCTIONS:
 1. ALWAYS prefer using the provided tools ('spec_retriever', 'fetch_section_chunks', and 'graph_explorer') to answer questions.
 2. Do NOT rely on your internal knowledge of JavaScript or the ECMAScript specification.
 3. If the user asks about a function, you MUST first use 'graph_explorer' to find the associated specification section.
 4. You MUST then use 'fetch_section_chunks' to read the actual text of that specification section before answering.
 5. Base your explanations ONLY on the information retrieved from the tools.
-6. If the tools do not provide enough information, state that clearly rather than guessing from your internal knowledge.`;
+6. If the tools do not provide enough information, state that clearly rather than guessing from your internal knowledge.
+
+{agent_scratchpad}`;
 
 const prompt = ChatPromptTemplate.fromMessages([
   ["system", systemPrompt],
@@ -107,11 +113,35 @@ async function main() {
   const graph = new Graph({ multi: true });
   graph.import(graphData);
 
-  const specRetrieverTool = new DynamicTool({
+  // Define Zod schemas for tool inputs
+  const specRetrieverSchema = z.object({
+    query: z
+      .string()
+      .describe("The search query to find relevant specification sections"),
+  });
+
+  const sectionRetrieverSchema = z.object({
+    sectionId: z
+      .string()
+      .describe(
+        "The section ID (e.g., 'sec-if-statement') to fetch chunks for",
+      ),
+  });
+
+  const graphExplorerSchema = z.object({
+    query: z
+      .string()
+      .describe(
+        "The section ID or function name to explore in the graph (e.g., 'Evaluate_IfStatement' or 'sec-if-statement')",
+      ),
+  });
+
+  const specRetrieverTool = new DynamicStructuredTool({
     name: "spec_retriever",
     description:
       "Queries the language specification for text content about specific sections or topics. Fetches up to 10 initial matches and uses a reranker to dynamically select the most relevant 3-5 documents based on query relevance.",
-    func: async (query: string) => {
+    schema: specRetrieverSchema,
+    func: async ({ query }) => {
       // Fetch more documents initially with full metadata
       const initialResults = await vectorStore.similaritySearch(query, 10);
 
@@ -156,13 +186,14 @@ async function main() {
     },
   });
 
-  const sectionRetrieverTool = new DynamicTool({
+  const sectionRetrieverTool = new DynamicStructuredTool({
     name: "fetch_section_chunks",
     description:
       "Retrieves all text chunks from a specific specification section by sectionid. " +
       "Supports recursive fetching - if a section has children, it will fetch all descendants. " +
       "Use this to get complete content when you see 'Subsection available' or 'partial section' references.",
-    func: async (sectionId: string) => {
+    schema: sectionRetrieverSchema,
+    func: async ({ sectionId }) => {
       const allDocs: string[] = [];
       const queue: string[] = [sectionId];
       const visited = new Set<string>();
@@ -210,11 +241,12 @@ async function main() {
     },
   });
 
-  const graphTool = new DynamicTool({
+  const graphTool = new DynamicStructuredTool({
     name: "graph_explorer",
     description:
-      "Explores structural relationships between specification sections and implementation code (functions). Use this to find which spec section a function implements. Input: section ID or function name.",
-    func: async (query: string) => {
+      "Explores structural relationships between specification sections and implementation code (functions). Use this to find which spec section a function implements.",
+    schema: graphExplorerSchema,
+    func: async ({ query }) => {
       console.log(`[Tool: graph_explorer] Querying for: ${query}`);
 
       let nodeId = query;
