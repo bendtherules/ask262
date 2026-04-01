@@ -2,69 +2,20 @@ import fs from "node:fs";
 import * as lancedbSdk from "@lancedb/lancedb";
 import { LanceDB } from "@langchain/community/vectorstores/lancedb";
 import { ChatPromptTemplate } from "@langchain/core/prompts";
-import { DynamicStructuredTool } from "@langchain/core/tools";
 import { OllamaEmbeddings } from "@langchain/ollama";
 import { ChatOpenAI } from "@langchain/openai";
 import Graph from "graphology";
 import { AgentExecutor, createReactAgent } from "langchain/agents";
-import { z } from "zod";
-
+import {
+  createGraphExplorerTool,
+  createSectionRetrieverTool,
+  createSpecRetrieverTool,
+} from "./agent_tools";
 import { GRAPH_FILE, STORAGE_DIR } from "./constants";
 
 const embeddings = new OllamaEmbeddings({
   model: "qwen3-embedding:0.6b",
 });
-
-const RERANKER_MODEL = "dengcao/Qwen3-Reranker-0.6B";
-const OLLAMA_HOST = process.env.OLLAMA_HOST || "http://localhost:11434";
-
-async function rerankDocuments<T extends { pageContent: string }>(
-  query: string,
-  documents: T[],
-): Promise<{ document: T; score: number; index: number }[]> {
-  try {
-    const response = await fetch(`${OLLAMA_HOST}/api/rerank`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        model: RERANKER_MODEL,
-        query: query,
-        documents: documents.map((d) => d.pageContent),
-      }),
-    });
-
-    if (!response.ok) {
-      console.warn(
-        `Reranker API failed: ${response.statusText}. Returning all documents.`,
-      );
-      return documents.map((doc, i) => ({
-        document: doc,
-        score: 1.0,
-        index: i,
-      }));
-    }
-
-    const data = await response.json();
-    if (!data.results || !Array.isArray(data.results)) {
-      return documents.map((doc, i) => ({
-        document: doc,
-        score: 1.0,
-        index: i,
-      }));
-    }
-
-    return data.results.map(
-      (result: { index: number; relevance_score: number }) => ({
-        document: documents[result.index],
-        score: result.relevance_score,
-        index: result.index,
-      }),
-    );
-  } catch (error) {
-    console.warn(`Reranker error: ${error}. Returning all documents.`);
-    return documents.map((doc, i) => ({ document: doc, score: 1.0, index: i }));
-  }
-}
 
 const config = JSON.parse(fs.readFileSync("./config.json", "utf-8"));
 const apiKey = config.NVIDIA_API_KEY;
@@ -113,171 +64,10 @@ async function main() {
   const graph = new Graph({ multi: true });
   graph.import(graphData);
 
-  // Define Zod schemas for tool inputs
-  const specRetrieverSchema = z.object({
-    query: z
-      .string()
-      .describe("The search query to find relevant specification sections"),
-  });
-
-  const sectionRetrieverSchema = z.object({
-    sectionId: z
-      .string()
-      .describe(
-        "The section ID (e.g., 'sec-if-statement') to fetch chunks for",
-      ),
-  });
-
-  const graphExplorerSchema = z.object({
-    query: z
-      .string()
-      .describe(
-        "The section ID or function name to explore in the graph (e.g., 'Evaluate_IfStatement' or 'sec-if-statement')",
-      ),
-  });
-
-  const specRetrieverTool = new DynamicStructuredTool({
-    name: "spec_retriever",
-    description:
-      "Queries the language specification for text content about specific sections or topics. Fetches up to 10 initial matches and uses a reranker to dynamically select the most relevant 3-5 documents based on query relevance.",
-    schema: specRetrieverSchema,
-    func: async ({ query }) => {
-      // Fetch more documents initially with full metadata
-      const initialResults = await vectorStore.similaritySearch(query, 10);
-
-      // Create document objects with metadata
-      const documents = initialResults.map((r) => ({
-        pageContent: r.pageContent,
-        metadata: r.metadata,
-      }));
-
-      // Rerank documents
-      const reranked = await rerankDocuments(query, documents);
-
-      // Sort by score and filter to most relevant
-      reranked.sort((a, b) => b.score - a.score);
-
-      // Dynamic selection: take top documents with score > 0.5, or at least top 3
-      const threshold = 0.5;
-      const minDocs = 3;
-      const maxDocs = 5;
-
-      const selected = reranked.filter(
-        (r, i) => i < minDocs || (i < maxDocs && r.score > threshold),
-      );
-
-      console.log(
-        `[spec_retriever] Query: "${query.slice(0, 50)}..." - Fetched ${documents.length}, reranked to ${selected.length} (scores: ${selected.map((s) => s.score.toFixed(2)).join(", ")})`,
-      );
-
-      // Return documents with metadata
-      return selected
-        .map((r) => {
-          const meta = r.document.metadata;
-          const sectionId = meta?.sectionid || "unknown";
-          const sectionTitle = meta?.sectiontitle || "unknown";
-          const partInfo =
-            meta?.partIndex !== null && meta?.partIndex !== undefined
-              ? ` [part ${(meta.partIndex as number) + 1}/${meta.totalParts}]`
-              : "";
-          return `--- Section: ${sectionId} | "${sectionTitle}"${partInfo} (score: ${r.score.toFixed(2)}) ---\n${r.document.pageContent}`;
-        })
-        .join("\n\n");
-    },
-  });
-
-  const sectionRetrieverTool = new DynamicStructuredTool({
-    name: "fetch_section_chunks",
-    description:
-      "Retrieves all text chunks from a specific specification section by sectionid. " +
-      "Supports recursive fetching - if a section has children, it will fetch all descendants. " +
-      "Use this to get complete content when you see 'Subsection available' or 'partial section' references.",
-    schema: sectionRetrieverSchema,
-    func: async ({ sectionId }) => {
-      const allDocs: string[] = [];
-      const queue: string[] = [sectionId];
-      const visited = new Set<string>();
-
-      while (queue.length > 0) {
-        const currentId = queue.shift()!;
-        if (visited.has(currentId)) continue;
-        visited.add(currentId);
-
-        const results = await table
-          .query()
-          .where(`sectionid = '${currentId}'`)
-          .limit(100)
-          .toArray();
-
-        // Sort by partIndex to maintain order (nulls last for single-part sections)
-        const sortedResults = results.sort((a: unknown, b: unknown) => {
-          const aIndex = (a as { partIndex?: number }).partIndex ?? Infinity;
-          const bIndex = (b as { partIndex?: number }).partIndex ?? Infinity;
-          return aIndex - bIndex;
-        });
-
-        for (const result of sortedResults) {
-          const typedResult = result as {
-            text?: string;
-            childrensectionids?: string[];
-            sectiontitle?: string;
-          };
-
-          if (typedResult.text) {
-            allDocs.push(typedResult.text);
-          }
-
-          // Add children to queue for recursive fetching
-          if (
-            typedResult.childrensectionids &&
-            Array.isArray(typedResult.childrensectionids)
-          ) {
-            queue.push(...typedResult.childrensectionids);
-          }
-        }
-      }
-
-      return allDocs.join("\n\n---\n\n");
-    },
-  });
-
-  const graphTool = new DynamicStructuredTool({
-    name: "graph_explorer",
-    description:
-      "Explores structural relationships between specification sections and implementation code (functions). Use this to find which spec section a function implements.",
-    schema: graphExplorerSchema,
-    func: async ({ query }) => {
-      console.log(`[Tool: graph_explorer] Querying for: ${query}`);
-
-      let nodeId = query;
-      if (!graph.hasNode(nodeId)) {
-        if (graph.hasNode(`func-${query}`)) {
-          nodeId = `func-${query}`;
-        }
-      }
-
-      if (graph.hasNode(nodeId)) {
-        const neighbors = graph.neighbors(nodeId);
-        const nodeAttr = graph.getNodeAttributes(nodeId);
-
-        let result = `Information for ${nodeId} (${nodeAttr.type}):\n`;
-        if (nodeAttr.title) result += `- Title: ${nodeAttr.title}\n`;
-        if (nodeAttr.file) result += `- File: ${nodeAttr.file}\n`;
-        result += `\nConnected parts:\n`;
-
-        neighbors.forEach((neighbor) => {
-          const attr = graph.getNodeAttributes(neighbor);
-          const edges = graph.edges(nodeId, neighbor);
-          const edgeAttr = graph.getEdgeAttributes(edges[0]);
-          result += `- ${neighbor} (${attr.type}) via ${edgeAttr.type}${attr.title ? `: ${attr.title}` : ""}\n`;
-        });
-
-        return result;
-      }
-
-      return `No information found in graph for ${query}. Use spec_retriever to search text.`;
-    },
-  });
+  // Create tools using factory functions
+  const specRetrieverTool = createSpecRetrieverTool(table, embeddings);
+  const sectionRetrieverTool = createSectionRetrieverTool(table);
+  const graphTool = createGraphExplorerTool(graph);
 
   const agent = await createReactAgent({
     llm,
