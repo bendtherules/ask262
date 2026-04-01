@@ -3,7 +3,8 @@
  * Uses Ollama's reranker API to score documents against a query.
  */
 
-const RERANKER_MODEL = "dengcao/Qwen3-Reranker-0.6B:Q8_0";
+import { RERANKER_MODEL } from "../constants";
+
 const OLLAMA_HOST = process.env.OLLAMA_HOST || "http://localhost:11434";
 
 export interface RerankResult<T> {

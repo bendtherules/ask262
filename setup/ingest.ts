@@ -9,10 +9,10 @@ import { RecursiveCharacterTextSplitter } from "@langchain/textsplitters";
 import * as cheerio from "cheerio";
 import { glob } from "glob";
 import ora from "ora";
-import { SPEC_DIR, STORAGE_DIR } from "../constants";
+import { EMBEDDING_MODEL, SPEC_DIR, STORAGE_DIR } from "../constants";
 
 const embeddings = new OllamaEmbeddings({
-  model: "qwen3-embedding:0.6b",
+  model: EMBEDDING_MODEL,
 });
 
 const htmlSplitter = new RecursiveCharacterTextSplitter({

@@ -11,10 +11,10 @@ import {
   createSectionRetrieverTool,
   createSpecRetrieverTool,
 } from "./agent_tools";
-import { GRAPH_FILE, STORAGE_DIR } from "./constants";
+import { EMBEDDING_MODEL, GRAPH_FILE, STORAGE_DIR } from "./constants";
 
 const embeddings = new OllamaEmbeddings({
-  model: "qwen3-embedding:0.6b",
+  model: EMBEDDING_MODEL,
 });
 
 const config = JSON.parse(fs.readFileSync("./config.json", "utf-8"));
