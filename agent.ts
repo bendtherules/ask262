@@ -11,8 +11,59 @@ import { AgentExecutor, createReactAgent } from "langchain/agents";
 import { GRAPH_FILE, STORAGE_DIR } from "./constants";
 
 const embeddings = new OllamaEmbeddings({
-  model: "nomic-embed-text-v2-moe",
+  model: "qwen3-embedding:0.6b",
 });
+
+const RERANKER_MODEL = "dengcao/Qwen3-Reranker-0.6B";
+const OLLAMA_HOST = process.env.OLLAMA_HOST || "http://localhost:11434";
+
+async function rerankDocuments<T extends { pageContent: string }>(
+  query: string,
+  documents: T[],
+): Promise<{ document: T; score: number; index: number }[]> {
+  try {
+    const response = await fetch(`${OLLAMA_HOST}/api/rerank`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: RERANKER_MODEL,
+        query: query,
+        documents: documents.map((d) => d.pageContent),
+      }),
+    });
+
+    if (!response.ok) {
+      console.warn(
+        `Reranker API failed: ${response.statusText}. Returning all documents.`,
+      );
+      return documents.map((doc, i) => ({
+        document: doc,
+        score: 1.0,
+        index: i,
+      }));
+    }
+
+    const data = await response.json();
+    if (!data.results || !Array.isArray(data.results)) {
+      return documents.map((doc, i) => ({
+        document: doc,
+        score: 1.0,
+        index: i,
+      }));
+    }
+
+    return data.results.map(
+      (result: { index: number; relevance_score: number }) => ({
+        document: documents[result.index],
+        score: result.relevance_score,
+        index: result.index,
+      }),
+    );
+  } catch (error) {
+    console.warn(`Reranker error: ${error}. Returning all documents.`);
+    return documents.map((doc, i) => ({ document: doc, score: 1.0, index: i }));
+  }
+}
 
 const config = JSON.parse(fs.readFileSync("./config.json", "utf-8"));
 const apiKey = config.NVIDIA_API_KEY;
@@ -59,24 +110,103 @@ async function main() {
   const specRetrieverTool = new DynamicTool({
     name: "spec_retriever",
     description:
-      "Queries the language specification for text content about specific sections or topics. Use this to get the detailed text of a section.",
+      "Queries the language specification for text content about specific sections or topics. Fetches up to 10 initial matches and uses a reranker to dynamically select the most relevant 3-5 documents based on query relevance.",
     func: async (query: string) => {
-      const results = await vectorStore.similaritySearch(query, 3);
-      return results.map((r) => r.pageContent).join("\n\n");
+      // Fetch more documents initially with full metadata
+      const initialResults = await vectorStore.similaritySearch(query, 10);
+
+      // Create document objects with metadata
+      const documents = initialResults.map((r) => ({
+        pageContent: r.pageContent,
+        metadata: r.metadata,
+      }));
+
+      // Rerank documents
+      const reranked = await rerankDocuments(query, documents);
+
+      // Sort by score and filter to most relevant
+      reranked.sort((a, b) => b.score - a.score);
+
+      // Dynamic selection: take top documents with score > 0.5, or at least top 3
+      const threshold = 0.5;
+      const minDocs = 3;
+      const maxDocs = 5;
+
+      const selected = reranked.filter(
+        (r, i) => i < minDocs || (i < maxDocs && r.score > threshold),
+      );
+
+      console.log(
+        `[spec_retriever] Query: "${query.slice(0, 50)}..." - Fetched ${documents.length}, reranked to ${selected.length} (scores: ${selected.map((s) => s.score.toFixed(2)).join(", ")})`,
+      );
+
+      // Return documents with metadata
+      return selected
+        .map((r) => {
+          const meta = r.document.metadata;
+          const sectionId = meta?.sectionid || "unknown";
+          const sectionTitle = meta?.sectiontitle || "unknown";
+          const partInfo =
+            meta?.partIndex !== null && meta?.partIndex !== undefined
+              ? ` [part ${(meta.partIndex as number) + 1}/${meta.totalParts}]`
+              : "";
+          return `--- Section: ${sectionId} | "${sectionTitle}"${partInfo} (score: ${r.score.toFixed(2)}) ---\n${r.document.pageContent}`;
+        })
+        .join("\n\n");
     },
   });
 
   const sectionRetrieverTool = new DynamicTool({
     name: "fetch_section_chunks",
     description:
-      "Retrieves all text chunks from a specific specification section by sectionId. Use after finding a sectionId via spec_retriever.",
+      "Retrieves all text chunks from a specific specification section by sectionid. " +
+      "Supports recursive fetching - if a section has children, it will fetch all descendants. " +
+      "Use this to get complete content when you see 'Subsection available' or 'partial section' references.",
     func: async (sectionId: string) => {
-      const results = await table
-        .query()
-        .where(`sectionid = '${sectionId}'`)
-        .limit(100)
-        .toArray();
-      return results.map((r: { text: string }) => r.text).join("\n\n");
+      const allDocs: string[] = [];
+      const queue: string[] = [sectionId];
+      const visited = new Set<string>();
+
+      while (queue.length > 0) {
+        const currentId = queue.shift()!;
+        if (visited.has(currentId)) continue;
+        visited.add(currentId);
+
+        const results = await table
+          .query()
+          .where(`sectionid = '${currentId}'`)
+          .limit(100)
+          .toArray();
+
+        // Sort by partIndex to maintain order (nulls last for single-part sections)
+        const sortedResults = results.sort((a: unknown, b: unknown) => {
+          const aIndex = (a as { partIndex?: number }).partIndex ?? Infinity;
+          const bIndex = (b as { partIndex?: number }).partIndex ?? Infinity;
+          return aIndex - bIndex;
+        });
+
+        for (const result of sortedResults) {
+          const typedResult = result as {
+            text?: string;
+            childrensectionids?: string[];
+            sectiontitle?: string;
+          };
+
+          if (typedResult.text) {
+            allDocs.push(typedResult.text);
+          }
+
+          // Add children to queue for recursive fetching
+          if (
+            typedResult.childrensectionids &&
+            Array.isArray(typedResult.childrensectionids)
+          ) {
+            queue.push(...typedResult.childrensectionids);
+          }
+        }
+      }
+
+      return allDocs.join("\n\n---\n\n");
     },
   });
 
