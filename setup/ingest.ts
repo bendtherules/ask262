@@ -194,24 +194,11 @@ async function buildSpecDocuments(): Promise<Document[]> {
           `  ⚠️ Section ${id} (${section.title}) is large (${sectionHtml.length} chars) but was NOT split (1 chunk)`,
         );
       }
+
       for (let i = 0; i < chunks.length; i++) {
         const chunk = chunks[i];
         // Extract text from HTML chunk
-        let chunkText = cheerio.load(chunk.pageContent).text().trim();
-
-        // Add part reference if multiple chunks (comes first in text)
-        if (chunks.length > 1) {
-          const partRef = `[This is partial section of: sectiontitle "${section.title}" with sectionid: \`${id}\`. This is part ${i + 1} of ${chunks.length}. Use same sectionid to find other parts.]\n`;
-          chunkText = partRef + chunkText;
-        }
-
-        // Add parent reference at the beginning (if exists) - comes after part reference
-        if (section.parentId && sectionMap.has(section.parentId)) {
-          const parent = sectionMap.get(section.parentId)!;
-          chunkText =
-            `[Parent section available: sectiontitle "${parent.title}" at sectionid: \`${section.parentId}\`]\n` +
-            chunkText;
-        }
+        const chunkText = cheerio.load(chunk.pageContent).text().trim();
 
         documents.push(
           new Document({
