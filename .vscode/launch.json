@@ -1,0 +1,52 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Debug: Agent",
+      "type": "bun",
+      "request": "launch",
+      "program": "${workspaceFolder}/agent.ts",
+      "args": ["How does array DefineOwnProperty work?"],
+      "cwd": "${workspaceFolder}",
+      "stopOnEntry": false,
+      "watchMode": false
+    },
+    {
+      "name": "Debug: Ingest",
+      "type": "bun",
+      "request": "launch",
+      "program": "${workspaceFolder}/setup/ingest.ts",
+      "cwd": "${workspaceFolder}",
+      "stopOnEntry": false,
+      "watchMode": false
+    },
+    {
+      "name": "Debug: Test Spec Retriever",
+      "type": "bun",
+      "request": "launch",
+      "program": "${workspaceFolder}/test/manual/test-spec-retriever.ts",
+      "args": ["array.[[DefineOwnProperty]]"],
+      "cwd": "${workspaceFolder}",
+      "stopOnEntry": false,
+      "watchMode": false
+    },
+    {
+      "name": "Debug: Build Graph",
+      "type": "bun",
+      "request": "launch",
+      "program": "${workspaceFolder}/setup/build_graph.ts",
+      "cwd": "${workspaceFolder}",
+      "stopOnEntry": false,
+      "watchMode": false
+    },
+    {
+      "name": "Debug Current File",
+      "type": "bun",
+      "request": "launch",
+      "program": "${file}",
+      "cwd": "${workspaceFolder}",
+      "stopOnEntry": false,
+      "watchMode": false
+    }
+  ]
+}

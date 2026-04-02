@@ -19,7 +19,6 @@ yarn-error.log*
 # Coverage reports
 coverage/
 # Test output
-.vscode/
 .idea/
 *.log
 # Optional: package lock files if you prefer not to commit them

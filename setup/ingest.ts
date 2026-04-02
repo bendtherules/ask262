@@ -11,13 +11,15 @@ import { glob } from "glob";
 import ora from "ora";
 import { EMBEDDING_MODEL, SPEC_DIR, STORAGE_DIR } from "../constants";
 
+// TODO: Debug small content chunks
+
 const embeddings = new OllamaEmbeddings({
   model: EMBEDDING_MODEL,
 });
 
 const htmlSplitter = new RecursiveCharacterTextSplitter({
-  chunkSize: 4096,
-  chunkOverlap: 100,
+  chunkSize: 8192, // ~2048 tokens, keeps most algorithms intact
+  chunkOverlap: 200, // Increased overlap for better continuity
   separators: [
     "<emu-note",
     "<emu-example",
@@ -25,8 +27,6 @@ const htmlSplitter = new RecursiveCharacterTextSplitter({
     "<emu-grammar",
     "<td",
     // Finally, try to split along HTML tags
-    "<h1",
-    "<h2",
     "<h3",
     "<h4",
     "<h5",
@@ -41,7 +41,7 @@ const htmlSplitter = new RecursiveCharacterTextSplitter({
   ],
 });
 
-const LARGE_DOC_THRESHOLD = 5500;
+const LARGE_DOC_THRESHOLD = 9500;
 const BATCH_SIZE = 100;
 
 async function generateEmbeddingsWithProgress(
@@ -171,6 +171,20 @@ async function buildSpecDocuments(): Promise<Document[]> {
       // (shouldn't happen with proper HTML structure, but just in case)
       $section.find("emu-clause").remove();
 
+      // Skip sections that only have h1 left (no meaningful content)
+      const hasOnlyH1 =
+        $section.children().length === 1 &&
+        $section.children("h1").length === 1;
+      const textContent = $section.text().trim();
+      const hasMinimalContent = textContent.length <= section.title.length + 10; // title + small buffer
+
+      if (hasOnlyH1 || hasMinimalContent) {
+        // console.log(
+        //   `  Skipping section ${id} - only contains heading, no substantive content`,
+        // );
+        continue;
+      }
+
       // Get HTML content with inline placeholders for splitting
       const sectionHtml = $section.html() || "";
 
@@ -199,6 +213,23 @@ async function buildSpecDocuments(): Promise<Document[]> {
         const chunk = chunks[i];
         // Extract text from HTML chunk
         const chunkText = cheerio.load(chunk.pageContent).text().trim();
+
+        // Warn if chunk is very small
+        const MIN_CHUNK_SIZE = 50;
+        if (chunkText.length < MIN_CHUNK_SIZE) {
+          console.warn(
+            `  ⚠️ WARNING: Chunk ${i + 1}/${chunks.length} for section ${id} is very small (${chunkText.length} chars)`,
+          );
+          console.warn(`     Chunk content: "${chunk.pageContent}"`);
+          // Clean up whitespace in HTML for cleaner log output
+          const cleanedHtml = sectionHtml.replace(/\s+/g, " ").trim();
+          console.warn(
+            `     Original text that was split (${sectionHtml.length} chars):`,
+          );
+          console.warn(
+            `     "${cleanedHtml.slice(0, 500)}${cleanedHtml.length > 500 ? "... [truncated]" : ""}"`,
+          );
+        }
 
         documents.push(
           new Document({

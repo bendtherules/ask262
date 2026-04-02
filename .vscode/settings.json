@@ -1,0 +1,19 @@
+{
+  "typescript.tsdk": "./node_modules/typescript/lib",
+  "typescript.enablePromptUseWorkspaceTsdk": true,
+  "debug.javascript.autoAttachFilter": "smart",
+  "debug.javascript.terminalOptions": {
+    "skipFiles": ["<node_internals>/**"]
+  },
+  "search.exclude": {
+    "**/node_modules": true,
+    "**/dist": true,
+    "**/storage": true,
+    "**/spec-built": true,
+    "**/engine262": true
+  },
+  "files.exclude": {
+    "**/node_modules": true,
+    "**/dist": true
+  }
+}
