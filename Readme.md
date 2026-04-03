@@ -12,7 +12,7 @@ This project implements a RAG-based AI chat agent to explore the ECMAScript spec
 
 1. **Install dependencies**:
    ```bash
-   npm install
+   bun install
    ```
 
 2. **Prepare environment**:
@@ -26,13 +26,18 @@ This project implements a RAG-based AI chat agent to explore the ECMAScript spec
 
 4. **Ingest data**:
    ```bash
-   node ingest.mjs
+   bun run ingest
    ```
-   *Note: This will take significant time as it generates local embeddings via Ollama for both the spec and the implementation.*
+    *Note: This will take significant time as it generates local embeddings via Ollama for both the spec and the implementation.*
 
 5. **Build graph**:
    ```bash
-   node build_graph.mjs
+   bun run build
+   ```
+
+6. **Run tests**:
+   ```bash
+   bun test
    ```
 
 ## Usage
@@ -40,7 +45,7 @@ This project implements a RAG-based AI chat agent to explore the ECMAScript spec
 Ask the agent questions about how code relates to the specification:
 
 ```bash
-node agent.mjs "Explain how the 'if' statement works and show its implementation."
+bun run agent "Explain how the 'if' statement works and show its implementation."
 ```
 
 The agent will use tools to search the specification, explore the implementation code, and navigate the relationships between them using the graph.

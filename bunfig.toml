@@ -1,0 +1,3 @@
+[test]
+# Only run tests in the test/ directory, ignoring engine262/ and other subdirectories
+root = "./test"
