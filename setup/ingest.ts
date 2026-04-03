@@ -5,43 +5,40 @@ import * as lancedbSdk from "@lancedb/lancedb";
 import { Index } from "@lancedb/lancedb";
 import { Document } from "@langchain/core/documents";
 import { OllamaEmbeddings } from "@langchain/ollama";
-import { RecursiveCharacterTextSplitter } from "@langchain/textsplitters";
 import * as cheerio from "cheerio";
 import { glob } from "glob";
 import ora from "ora";
 import { EMBEDDING_MODEL, SPEC_DIR, STORAGE_DIR } from "../constants";
-
-// TODO: Debug small content chunks
+import { HTMLTextSplitter } from "../textsplitters";
 
 const embeddings = new OllamaEmbeddings({
   model: EMBEDDING_MODEL,
 });
 
-const htmlSplitter = new RecursiveCharacterTextSplitter({
-  chunkSize: 8192, // ~2048 tokens, keeps most algorithms intact
-  chunkOverlap: 200, // Increased overlap for better continuity
+const htmlSplitter = new HTMLTextSplitter({
+  chunkSize: 8192,
+  maxChunkSize: 12288,
+  chunkOverlap: 0,
   separators: [
-    "<emu-note",
-    "<emu-example",
-    "<emu-table",
-    "<emu-grammar",
-    "<td",
-    // Finally, try to split along HTML tags
-    "<h3",
-    "<h4",
-    "<h5",
-    "<h6",
-    "<p",
-    "<div",
-    "<br",
-    "<li",
-    "<span",
-    "<ul",
-    "<ol",
+    "emu-note",
+    "emu-example",
+    "emu-table",
+    "td",
+    "h3",
+    "h4",
+    "h5",
+    "h6",
+    "p",
+    "div",
+    "br",
+    "li",
+    "ul",
+    "ol",
   ],
+  neverBreakWithin: ["emu-grammar", "emu-alg"],
 });
 
-const LARGE_DOC_THRESHOLD = 9500;
+const LARGE_DOC_THRESHOLD = htmlSplitter.chunkSize + 100;
 const BATCH_SIZE = 100;
 
 async function generateEmbeddingsWithProgress(
@@ -108,7 +105,7 @@ async function buildSpecDocuments(): Promise<Document[]> {
 
   for (const file of htmlFiles) {
     const content = fs.readFileSync(file, "utf-8");
-    const $ = cheerio.load(content);
+    const $ = cheerio.load(`<body>${content}</body>`);
 
     // First pass: collect all sections and build hierarchy
     const sectionMap = new Map<
@@ -153,7 +150,7 @@ async function buildSpecDocuments(): Promise<Document[]> {
     // Second pass: create documents with formatted text
     for (const [id, section] of sectionMap) {
       // Parse the stored HTML and replace direct children with placeholders
-      const $section = cheerio.load(section.html).root();
+      const $section = cheerio.load(`<body>${section.html}</body>`).root();
 
       // Find direct children emu-clause elements only
       $section.children("emu-clause").each((_, childElem) => {
@@ -179,50 +176,37 @@ async function buildSpecDocuments(): Promise<Document[]> {
       const hasMinimalContent = textContent.length <= section.title.length + 10; // title + small buffer
 
       if (hasOnlyH1 || hasMinimalContent) {
-        // console.log(
-        //   `  Skipping section ${id} - only contains heading, no substantive content`,
-        // );
         continue;
       }
 
       // Get HTML content with inline placeholders for splitting
       const sectionHtml = $section.html() || "";
 
-      // Create temp document with HTML content for splitting
-      const tempDoc = new Document({
-        pageContent: sectionHtml,
-        metadata: {
-          source: path.basename(file),
-          sectionid: id,
-          sectiontitle: section.title,
-          type: "specification",
-        },
+      // Split HTML into normalized text chunks.
+      const chunks = await htmlSplitter.splitText(sectionHtml);
+
+      // First pass: collect all chunk data
+      // Only mark chunks as "small" if the original section content was long enough
+      // to reasonably split (more than 100 chars). This prevents false positives
+      // when the entire section was just naturally brief.
+      const chunkData = chunks.map((chunk, idx) => {
+        return {
+          index: idx,
+          text: chunk,
+          size: chunk.length,
+          isSmall: chunk.length < 50 && textContent.length > 100,
+        };
       });
 
-      // Split the document
-      const chunks = await htmlSplitter.splitDocuments([tempDoc]);
-
-      // Log if large section wasn't split properly
-      if (sectionHtml.length > LARGE_DOC_THRESHOLD && chunks.length === 1) {
-        console.warn(
-          `  ⚠️ Section ${id} (${section.title}) is large (${sectionHtml.length} chars) but was NOT split (1 chunk)`,
-        );
-      }
-
-      for (let i = 0; i < chunks.length; i++) {
-        const chunk = chunks[i];
-        // Extract text from HTML chunk
-        const chunkText = cheerio.load(chunk.pageContent).text().trim();
-
-        // Warn if chunk is very small
-        const MIN_CHUNK_SIZE = 50;
-        if (chunkText.length < MIN_CHUNK_SIZE) {
+      // Print warnings for small chunks
+      const smallChunks = chunkData.filter((c) => c.isSmall);
+      if (smallChunks.length > 0) {
+        const cleanedHtml = sectionHtml.replace(/\s+/g, " ").trim();
+        for (const chunk of smallChunks) {
           console.warn(
-            `  ⚠️ WARNING: Chunk ${i + 1}/${chunks.length} for section ${id} is very small (${chunkText.length} chars)`,
+            `  ⚠️ WARNING: Chunk ${chunk.index + 1}/${chunks.length} for section ${id} is very small (${chunk.size} chars)`,
           );
-          console.warn(`     Chunk content: "${chunk.pageContent}"`);
-          // Clean up whitespace in HTML for cleaner log output
-          const cleanedHtml = sectionHtml.replace(/\s+/g, " ").trim();
+          console.warn(`     Chunk content: "${chunk.text}"`);
           console.warn(
             `     Original text that was split (${sectionHtml.length} chars):`,
           );
@@ -230,10 +214,28 @@ async function buildSpecDocuments(): Promise<Document[]> {
             `     "${cleanedHtml.slice(0, 500)}${cleanedHtml.length > 500 ? "... [truncated]" : ""}"`,
           );
         }
+        // Print summary after all warnings
+        const chunkSizes = chunkData
+          .map((c) => `${c.index + 1}:${c.size}`)
+          .join(", ");
+        const totalChunkSize = chunkData.reduce((sum, c) => sum + c.size, 0);
+        console.warn(
+          `     All chunk sizes: [${chunkSizes}] (total: ${totalChunkSize} chars)`,
+        );
+      }
 
+      // Print warnings for large sections wasn't split properly
+      if (chunkData.length === 1 && chunkData[0].size > LARGE_DOC_THRESHOLD) {
+        console.warn(
+          `  🛑 Section ${id} (${section.title}) is large (${chunkData[0].size} chars) but was NOT split (1 chunk)`,
+        );
+      }
+
+      // Create documents
+      for (const chunk of chunkData) {
         documents.push(
           new Document({
-            pageContent: chunkText,
+            pageContent: chunk.text,
             metadata: {
               source: path.basename(file),
               sectionid: id,
@@ -241,8 +243,8 @@ async function buildSpecDocuments(): Promise<Document[]> {
               type: "specification",
               parentsectionid: section.parentId,
               childrensectionids: section.childrenIds,
-              partIndex: chunks.length > 1 ? i : null,
-              totalParts: chunks.length,
+              partIndex: chunk.index,
+              totalParts: chunkData.length,
             },
           }),
         );
@@ -264,7 +266,7 @@ async function main() {
       const id = doc.metadata.sectionid || "unknown";
       const title = doc.metadata.sectiontitle || "unknown";
       console.warn(
-        `⚠️  Warning: Document ${id} "${title}" is large (${doc.pageContent.length} chars)`,
+        `🚨 Warning: Document ${id} "${title}" is large (${doc.pageContent.length} chars)`,
       );
     }
   }
