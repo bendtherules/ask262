@@ -1,1 +1,1 @@
-export * from "./html_text_splitter";
+export * from "./HTMLTextSplitter";
