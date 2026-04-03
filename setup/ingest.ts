@@ -41,6 +41,13 @@ const htmlSplitter = new HTMLTextSplitter({
 const LARGE_DOC_THRESHOLD = htmlSplitter.chunkSize + 100;
 const BATCH_SIZE = 100;
 
+interface ChunkInfo {
+  index: number;
+  text: string;
+  size: number;
+  isSmall: boolean;
+}
+
 async function generateEmbeddingsWithProgress(
   documents: Document[],
 ): Promise<number[][]> {
@@ -189,17 +196,19 @@ async function buildSpecDocuments(): Promise<Document[]> {
       // Only mark chunks as "small" if the original section content was long enough
       // to reasonably split (more than 100 chars). This prevents false positives
       // when the entire section was just naturally brief.
-      const chunkData = chunks.map((chunk, idx) => {
-        return {
-          index: idx,
-          text: chunk,
-          size: chunk.length,
-          isSmall: chunk.length < 50 && textContent.length > 100,
-        };
-      });
+      const chunkData: ChunkInfo[] = chunks.map(
+        (chunk: string, idx: number) => {
+          return {
+            index: idx,
+            text: chunk,
+            size: chunk.length,
+            isSmall: chunk.length < 50 && textContent.length > 100,
+          };
+        },
+      );
 
       // Print warnings for small chunks
-      const smallChunks = chunkData.filter((c) => c.isSmall);
+      const smallChunks = chunkData.filter((c: ChunkInfo) => c.isSmall);
       if (smallChunks.length > 0) {
         const cleanedHtml = sectionHtml.replace(/\s+/g, " ").trim();
         for (const chunk of smallChunks) {
@@ -216,9 +225,12 @@ async function buildSpecDocuments(): Promise<Document[]> {
         }
         // Print summary after all warnings
         const chunkSizes = chunkData
-          .map((c) => `${c.index + 1}:${c.size}`)
+          .map((c: ChunkInfo) => `${c.index + 1}:${c.size}`)
           .join(", ");
-        const totalChunkSize = chunkData.reduce((sum, c) => sum + c.size, 0);
+        const totalChunkSize = chunkData.reduce(
+          (sum: number, c: ChunkInfo) => sum + c.size,
+          0,
+        );
         console.warn(
           `     All chunk sizes: [${chunkSizes}] (total: ${totalChunkSize} chars)`,
         );
@@ -271,6 +283,9 @@ async function main() {
     }
   }
 
+  // Print summary statistics
+  printSummary(specDocs);
+
   const db = await lancedbSdk.connect(STORAGE_DIR);
 
   // Check if table exists and handle overwrite
@@ -314,6 +329,63 @@ async function main() {
   await table.createIndex("type", { config: Index.btree() });
 
   console.log(`Index built and persisted to ${STORAGE_DIR}`);
+}
+
+/**
+ * Prints summary statistics about the ingested documents.
+ * Shows distribution of document sizes, sections, and chunk counts.
+ */
+function printSummary(documents: Document[]): void {
+  if (documents.length === 0) {
+    console.log("\n📊 Summary: No documents ingested");
+    return;
+  }
+
+  // Calculate document size statistics
+  const sizes = documents.map((doc) => doc.pageContent.length);
+  const totalSize = sizes.reduce((sum, size) => sum + size, 0);
+  const avgSize = totalSize / documents.length;
+  const minSize = Math.min(...sizes);
+  const maxSize = Math.max(...sizes);
+
+  // Count unique sections
+  const sectionIds = new Set<string>();
+  const sectionsWithMultipleChunks = new Map<string, number>();
+
+  for (const doc of documents) {
+    const sectionId = doc.metadata.sectionid as string;
+    if (sectionId) {
+      sectionIds.add(sectionId);
+      sectionsWithMultipleChunks.set(
+        sectionId,
+        (sectionsWithMultipleChunks.get(sectionId) || 0) + 1,
+      );
+    }
+  }
+
+  const multiChunkSections = Array.from(sectionsWithMultipleChunks.entries())
+    .filter(([, count]) => count > 1)
+    .sort((a, b) => b[1] - a[1]);
+
+  console.log("\n📊 Ingest Summary:");
+  console.log(`  Total documents: ${documents.length}`);
+  console.log(`  Unique sections: ${sectionIds.size}`);
+  console.log(`  Sections with multiple chunks: ${multiChunkSections.length}`);
+  console.log("\n  Document size distribution:");
+  console.log(`    Average: ${avgSize.toFixed(0)} chars`);
+  console.log(`    Min: ${minSize} chars`);
+  console.log(`    Max: ${maxSize} chars`);
+  console.log(`    Total: ${totalSize} chars`);
+
+  if (multiChunkSections.length > 0) {
+    console.log("\n  Top sections by chunk count:");
+    for (const [sectionId, count] of multiChunkSections.slice(0, 5)) {
+      console.log(`    ${sectionId}: ${count} chunks`);
+    }
+    if (multiChunkSections.length > 5) {
+      console.log(`    ... and ${multiChunkSections.length - 5} more`);
+    }
+  }
 }
 
 main().catch(console.error);
