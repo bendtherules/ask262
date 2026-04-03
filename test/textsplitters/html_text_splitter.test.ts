@@ -223,6 +223,45 @@ describe("HTMLTextSplitter", () => {
     });
   });
 
+  test("prepends chunkHeader in splitDocuments output", async () => {
+    const splitter = new HTMLTextSplitter({
+      chunkSize: 18,
+      separators: ["h2"],
+    });
+
+    const documents = await splitter.splitDocuments(
+      [
+        new Document({
+          pageContent:
+            "<section><p>Intro text</p><h2>Section Title</h2><p>Body text</p></section>",
+          metadata: { source: "sample.html" },
+        }),
+      ],
+      {
+        chunkHeader: "Header: ",
+      },
+    );
+
+    expect(documents).toHaveLength(2);
+    expect(documents[0].pageContent).toBe("Header: Intro text");
+    expect(documents[1].pageContent).toBe("Header: Section Title Body text");
+  });
+
+  test("returns no documents when source content produces no chunks", async () => {
+    const splitter = new HTMLTextSplitter({
+      chunkSize: 18,
+    });
+
+    const documents = await splitter.splitDocuments([
+      new Document({
+        pageContent: "<div>   </div>",
+        metadata: { source: "empty.html" },
+      }),
+    ]);
+
+    expect(documents).toEqual([]);
+  });
+
   test("resets part metadata per input document", async () => {
     const splitter = new HTMLTextSplitter({
       chunkSize: 18,
