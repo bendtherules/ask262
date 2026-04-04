@@ -348,24 +348,35 @@ function printSummary(documents: Document[]): void {
   const minSize = Math.min(...sizes);
   const maxSize = Math.max(...sizes);
 
-  // Count unique sections
+  // Count unique sections and track chunk sizes per section
   const sectionIds = new Set<string>();
-  const sectionsWithMultipleChunks = new Map<string, number>();
+  interface SectionInfo {
+    count: number;
+    chunkSizes: number[];
+  }
+  const sectionInfo = new Map<string, SectionInfo>();
 
   for (const doc of documents) {
     const sectionId = doc.metadata.sectionid as string;
     if (sectionId) {
       sectionIds.add(sectionId);
-      sectionsWithMultipleChunks.set(
-        sectionId,
-        (sectionsWithMultipleChunks.get(sectionId) || 0) + 1,
-      );
+      const existing = sectionInfo.get(sectionId);
+      if (existing) {
+        existing.count++;
+        existing.chunkSizes.push(doc.pageContent.length);
+      } else {
+        sectionInfo.set(sectionId, {
+          count: 1,
+          chunkSizes: [doc.pageContent.length],
+        });
+      }
     }
   }
 
-  const multiChunkSections = Array.from(sectionsWithMultipleChunks.entries())
-    .filter(([, count]) => count > 1)
-    .sort((a, b) => b[1] - a[1]);
+  // Get sections with multiple chunks, sorted by chunk count
+  const multiChunkSections = Array.from(sectionInfo.entries())
+    .filter(([, info]) => info.count > 1)
+    .sort((a, b) => b[1].count - a[1].count);
 
   console.log("\n📊 Ingest Summary:");
   console.log(`  Total documents: ${documents.length}`);
@@ -378,9 +389,13 @@ function printSummary(documents: Document[]): void {
   console.log(`    Total: ${totalSize} chars`);
 
   if (multiChunkSections.length > 0) {
-    console.log("\n  Top sections by chunk count:");
-    for (const [sectionId, count] of multiChunkSections.slice(0, 5)) {
-      console.log(`    ${sectionId}: ${count} chunks`);
+    console.log("\n  Top 5 sections by chunk count:");
+    for (const [sectionId, info] of multiChunkSections.slice(0, 5)) {
+      const sectionTotal = info.chunkSizes.reduce((sum, size) => sum + size, 0);
+      const chunkSizesStr = info.chunkSizes.join(", ");
+      console.log(`    ${sectionId}:`);
+      console.log(`      Chunks: ${info.count}, Total: ${sectionTotal} chars`);
+      console.log(`      Chunk sizes: [${chunkSizesStr}]`);
     }
     if (multiChunkSections.length > 5) {
       console.log(`    ... and ${multiChunkSections.length - 5} more`);
