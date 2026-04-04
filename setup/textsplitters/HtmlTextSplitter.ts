@@ -169,8 +169,8 @@ export class HTMLTextSplitter extends TextSplitter {
             pageContent: `${chunkHeader}${chunk}`,
             metadata: {
               ...document.metadata,
-              partIndex: index,
-              totalParts: chunks.length,
+              partindex: index,
+              totalparts: chunks.length,
             },
           }),
         );
@@ -231,12 +231,18 @@ export class HTMLTextSplitter extends TextSplitter {
 
   /**
    * Collapses internal whitespace and trims leading/trailing whitespace.
+   * Preserves newlines between block elements while normalizing spaces.
    *
    * Needed so text extraction can preserve raw adjacency first and normalize
    * only once after boundary-aware joining.
    */
   private normalizeWhitespace(text: string): string {
-    return text.replace(/\s+/g, " ").trim();
+    return text
+      .replace(/\n[ \t]+/g, "\n") // Remove leading spaces after newlines
+      .replace(/[ \t]+\n/g, "\n") // Remove trailing spaces before newlines
+      .replace(/\n{3,}/g, "\n\n") // Collapse 3+ newlines to 2
+      .replace(/[ \t]{2,}/g, " ") // Collapse multiple spaces/tabs to one
+      .trim();
   }
 
   /**
@@ -260,7 +266,7 @@ export class HTMLTextSplitter extends TextSplitter {
         previousNode &&
         (this.isBlockishNode(previousNode) || this.isBlockishNode(node))
       ) {
-        result += " ";
+        result += "\n"; // Add newline between block elements for better structure
       }
 
       result += text;

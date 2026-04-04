@@ -46,8 +46,8 @@ export function createSpecRetrieverTool(
           type: r.type,
           parentsectionid: r.parentsectionid,
           childrensectionids: r.childrensectionids,
-          partIndex: r.partIndex,
-          totalParts: r.totalParts,
+          partindex: r.partindex,
+          totalparts: r.totalparts,
         },
       }));
 
@@ -77,8 +77,8 @@ export function createSpecRetrieverTool(
           const sectionId = meta?.sectionid || "unknown";
           const sectionTitle = meta?.sectiontitle || "unknown";
           const partInfo =
-            meta?.partIndex !== null && meta?.partIndex !== undefined
-              ? ` [part ${(meta.partIndex as number) + 1}/${meta.totalParts}]`
+            meta?.partindex !== null && meta?.partindex !== undefined
+              ? ` [part ${(meta.partindex as number) + 1}/${meta.totalparts}]`
               : "";
           return `--- Section: ${sectionId} | "${sectionTitle}"${partInfo} (score: ${r.score.toFixed(2)}) ---\n${r.document.pageContent}`;
         })

@@ -41,10 +41,10 @@ export function createSectionRetrieverTool(table: Table) {
           .limit(100)
           .toArray();
 
-        // Sort by partIndex to maintain order (nulls last for single-part sections)
+        // Sort by partindex to maintain order (nulls last for single-part sections)
         const sortedResults = results.sort((a: unknown, b: unknown) => {
-          const aIndex = (a as { partIndex?: number }).partIndex ?? Infinity;
-          const bIndex = (b as { partIndex?: number }).partIndex ?? Infinity;
+          const aIndex = (a as { partindex?: number }).partindex ?? Infinity;
+          const bIndex = (b as { partindex?: number }).partindex ?? Infinity;
           return aIndex - bIndex;
         });
 

@@ -9,7 +9,11 @@ import * as cheerio from "cheerio";
 import { glob } from "glob";
 import ora from "ora";
 import { EMBEDDING_MODEL, SPEC_DIR, STORAGE_DIR } from "../constants";
-import { HTMLTextSplitter } from "../textsplitters";
+import { HTMLTextSplitter } from "./textsplitters";
+import {
+  addNewlinesAfterBlocks,
+  convertTablesToMarkdown,
+} from "./utils/formatHTMLForIngestion";
 
 const embeddings = new OllamaEmbeddings({
   model: EMBEDDING_MODEL,
@@ -157,7 +161,12 @@ async function buildSpecDocuments(): Promise<Document[]> {
     // Second pass: create documents with formatted text
     for (const [id, section] of sectionMap) {
       // Parse the stored HTML and replace direct children with placeholders
-      const $section = cheerio.load(`<body>${section.html}</body>`).root();
+      const $ = cheerio.load(`<body>${section.html}</body>`);
+
+      // Convert tables to markdown format for better text extraction
+      convertTablesToMarkdown($);
+
+      const $section = $.root();
 
       // Find direct children emu-clause elements only
       $section.children("emu-clause").each((_, childElem) => {
@@ -174,6 +183,10 @@ async function buildSpecDocuments(): Promise<Document[]> {
       // Remove any nested emu-clause elements that weren't direct children
       // (shouldn't happen with proper HTML structure, but just in case)
       $section.find("emu-clause").remove();
+
+      // Add newlines after block elements to preserve document structure
+      // This helps the text splitter maintain paragraph/section boundaries
+      addNewlinesAfterBlocks($);
 
       // Skip sections that only have h1 left (no meaningful content)
       const hasOnlyH1 =
@@ -255,8 +268,8 @@ async function buildSpecDocuments(): Promise<Document[]> {
               type: "specification",
               parentsectionid: section.parentId,
               childrensectionids: section.childrenIds,
-              partIndex: chunk.index,
-              totalParts: chunkData.length,
+              partindex: chunk.index,
+              totalparts: chunkData.length,
             },
           }),
         );

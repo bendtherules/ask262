@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { Document } from "@langchain/core/documents";
-import { HTMLTextSplitter } from "../../textsplitters";
+import { HTMLTextSplitter } from "../../setup/textsplitters";
 
 describe("HTMLTextSplitter", () => {
   test("keeps small HTML in a single chunk", async () => {
@@ -13,7 +13,7 @@ describe("HTMLTextSplitter", () => {
       "<section><h2>Title</h2><p>Short body text</p></section>",
     );
 
-    expect(chunks).toEqual(["Title Short body text"]);
+    expect(chunks).toEqual(["Title\nShort body text"]);
   });
 
   test("does not add synthetic spaces between inline tags", async () => {
@@ -47,7 +47,7 @@ describe("HTMLTextSplitter", () => {
 
     const chunks = await splitter.splitText("<div>Hello</div><div>World</div>");
 
-    expect(chunks).toEqual(["Hello World"]);
+    expect(chunks).toEqual(["Hello\nWorld"]);
   });
 
   test("normalizes repeated whitespace in emitted text", async () => {
@@ -59,7 +59,7 @@ describe("HTMLTextSplitter", () => {
       "<div>  Hello\n\n   World  </div><div>\tAgain</div>",
     );
 
-    expect(chunks).toEqual(["Hello World Again"]);
+    expect(chunks).toEqual(["Hello\n\nWorld\nAgain"]);
   });
 
   test("treats separators as soft hints until size pressure exists", async () => {
@@ -78,7 +78,7 @@ describe("HTMLTextSplitter", () => {
       ].join(""),
     );
 
-    expect(chunks).toEqual(["Intro text", "Section Title Body text"]);
+    expect(chunks).toEqual(["Intro text", "Section Title\nBody text"]);
   });
 
   test("groups consecutive separators into later section boundaries", async () => {
@@ -91,7 +91,7 @@ describe("HTMLTextSplitter", () => {
       "<section><h2>A</h2><h3>B</h3><p>Body</p></section>",
     );
 
-    expect(chunks).toEqual(["A", "B Body"]);
+    expect(chunks).toEqual(["A", "B\nBody"]);
   });
 
   test("keeps protected content intact up to maxChunkSize", async () => {
@@ -140,7 +140,7 @@ describe("HTMLTextSplitter", () => {
       '<div class="keep"><h2>Title</h2><p>Body text</p></div>',
     );
 
-    expect(chunks).toEqual(["Title Body text"]);
+    expect(chunks).toEqual(["Title\nBody text"]);
   });
 
   test("force-splits oversized leaf text when maxChunkSize is finite", async () => {
@@ -212,14 +212,14 @@ describe("HTMLTextSplitter", () => {
     expect(documents[0].pageContent).toBe("Intro text");
     expect(documents[0].metadata).toMatchObject({
       source: "sample.html",
-      partIndex: 0,
-      totalParts: 2,
+      partindex: 0,
+      totalparts: 2,
     });
-    expect(documents[1].pageContent).toBe("Section Title Body text");
+    expect(documents[1].pageContent).toBe("Section Title\nBody text");
     expect(documents[1].metadata).toMatchObject({
       source: "sample.html",
-      partIndex: 1,
-      totalParts: 2,
+      partindex: 1,
+      totalparts: 2,
     });
   });
 
@@ -244,7 +244,7 @@ describe("HTMLTextSplitter", () => {
 
     expect(documents).toHaveLength(2);
     expect(documents[0].pageContent).toBe("Header: Intro text");
-    expect(documents[1].pageContent).toBe("Header: Section Title Body text");
+    expect(documents[1].pageContent).toBe("Header: Section Title\nBody text");
   });
 
   test("returns no documents when source content produces no chunks", async () => {
@@ -284,23 +284,23 @@ describe("HTMLTextSplitter", () => {
     expect(documents).toHaveLength(4);
     expect(documents[0].metadata).toMatchObject({
       source: "first.html",
-      partIndex: 0,
-      totalParts: 2,
+      partindex: 0,
+      totalparts: 2,
     });
     expect(documents[1].metadata).toMatchObject({
       source: "first.html",
-      partIndex: 1,
-      totalParts: 2,
+      partindex: 1,
+      totalparts: 2,
     });
     expect(documents[2].metadata).toMatchObject({
       source: "second.html",
-      partIndex: 0,
-      totalParts: 2,
+      partindex: 0,
+      totalparts: 2,
     });
     expect(documents[3].metadata).toMatchObject({
       source: "second.html",
-      partIndex: 1,
-      totalParts: 2,
+      partindex: 1,
+      totalparts: 2,
     });
   });
 
