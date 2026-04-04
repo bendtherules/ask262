@@ -9,8 +9,6 @@
     "**/node_modules": true,
     "**/dist": true,
     "**/storage": true,
-    "**/spec-built": true,
-    "**/engine262": true
   },
   "files.exclude": {
     "**/node_modules": true,
