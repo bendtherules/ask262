@@ -10,10 +10,7 @@ import { glob } from "glob";
 import ora from "ora";
 import { EMBEDDING_MODEL, SPEC_DIR, STORAGE_DIR } from "../constants";
 import { HTMLTextSplitter } from "./textsplitters";
-import {
-  addNewlinesAfterBlocks,
-  convertTablesToMarkdown,
-} from "./utils/formatHTMLForIngestion";
+import { formatForIngestion } from "./utils/formatHTMLForIngestion";
 
 const embeddings = new OllamaEmbeddings({
   model: EMBEDDING_MODEL,
@@ -153,8 +150,10 @@ async function buildSpecDocuments(): Promise<Document[]> {
     // Build children relationships
     for (const [id, section] of sectionMap) {
       if (section.parentId && sectionMap.has(section.parentId)) {
-        const parent = sectionMap.get(section.parentId)!;
-        parent.childrenIds.push(id);
+        const parent = sectionMap.get(section.parentId);
+        if (parent) {
+          parent.childrenIds.push(id);
+        }
       }
     }
 
@@ -163,18 +162,17 @@ async function buildSpecDocuments(): Promise<Document[]> {
       // Parse the stored HTML and replace direct children with placeholders
       const $ = cheerio.load(`<body>${section.html}</body>`);
 
-      // Convert tables to markdown format for better text extraction
-      convertTablesToMarkdown($);
-
       const $section = $.root();
 
       // Find direct children emu-clause elements only
       $section.children("emu-clause").each((_, childElem) => {
         const childId = $(childElem).attr("id");
         if (childId && sectionMap.has(childId)) {
-          const child = sectionMap.get(childId)!;
-          const placeholder = `[Subsection available: sectiontitle "${child.title}" at sectionid: \`${childId}\`]`;
-          $(childElem).replaceWith(placeholder);
+          const child = sectionMap.get(childId);
+          if (child) {
+            const placeholder = `[Subsection available: sectiontitle "${child.title}" at sectionid: \`${childId}\`]`;
+            $(childElem).replaceWith(placeholder);
+          }
         } else {
           $(childElem).remove();
         }
@@ -184,9 +182,8 @@ async function buildSpecDocuments(): Promise<Document[]> {
       // (shouldn't happen with proper HTML structure, but just in case)
       $section.find("emu-clause").remove();
 
-      // Add newlines after block elements to preserve document structure
-      // This helps the text splitter maintain paragraph/section boundaries
-      addNewlinesAfterBlocks($);
+      // All formatting transformations (single call)
+      formatForIngestion($);
 
       // Skip sections that only have h1 left (no meaningful content)
       const hasOnlyH1 =

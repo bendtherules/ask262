@@ -21,7 +21,11 @@ import { GRAPH_FILE } from "../constants";
  */
 async function buildGraph() {
   // Initialize a multi-graph (allows multiple edges between same nodes)
-  const graph = new Graph({ multi: true, type: "directed", allowSelfLoops: false });
+  const graph = new Graph({
+    multi: true,
+    type: "directed",
+    allowSelfLoops: false,
+  });
 
   // Phase 1: Discover and parse specification HTML files
   const htmlFiles = await glob(path.join(SPEC_DIR, "*.html"));

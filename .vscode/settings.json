@@ -8,7 +8,7 @@
   "search.exclude": {
     "**/node_modules": true,
     "**/dist": true,
-    "**/storage": true,
+    "**/storage": true
   },
   "files.exclude": {
     "**/node_modules": true,

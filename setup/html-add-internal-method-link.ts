@@ -24,7 +24,7 @@ const htmlCheerioApi = cheerio.load(htmlString);
  * the first `<td>` of each row. The generated id follows the pattern:
  * `ask262-internal-method-<methodName>` where `<methodName>` is the text
  * content of the `<var>` element with surrounding brackets stripped.
- * 
+ *
  * @param $ - The Cheerio parsing instance.
  */
 function addInternalMethodIds($: CheerioAPI): void {
