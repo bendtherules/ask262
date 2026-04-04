@@ -157,15 +157,36 @@ async function showSummary(table: Table) {
     console.log(`    Max: ${Math.max(...sizes)} chars`);
   }
 
-  // Show top 5 largest using sorted query
-  const sortedBySize = [...allRecords].sort(
-    (a, b) => b.text.length - a.text.length,
-  );
-  console.log(`\n  Top 5 largest documents:`);
-  for (let i = 0; i < Math.min(5, sortedBySize.length); i++) {
-    const r = sortedBySize[i];
+  // Show top 5 largest documents (by total section size, not individual chunks)
+  const sectionSizes = new Map<
+    string,
+    { sectionid: string; title: string; totalSize: number; chunks: number }
+  >();
+  for (const r of allRecords) {
+    const existing = sectionSizes.get(r.sectionid);
+    if (existing) {
+      existing.totalSize += r.text.length;
+      existing.chunks += 1;
+    } else {
+      sectionSizes.set(r.sectionid, {
+        sectionid: r.sectionid,
+        title: r.sectiontitle,
+        totalSize: r.text.length,
+        chunks: 1,
+      });
+    }
+  }
+
+  const sortedSections = Array.from(sectionSizes.values())
+    .sort((a, b) => b.totalSize - a.totalSize)
+    .slice(0, 5);
+
+  console.log(`\n  Top 5 largest documents (by total size):`);
+  for (let i = 0; i < sortedSections.length; i++) {
+    const s = sortedSections[i];
+    const chunkInfo = s.chunks > 1 ? ` (${s.chunks} parts)` : "";
     console.log(
-      `    ${i + 1}. ${r.sectionid} (chunk ${r.partindex + 1}/${r.totalparts}): ${r.text.length} chars`,
+      `    ${i + 1}. ${s.sectionid}${chunkInfo}: ${s.totalSize.toLocaleString()} chars`,
     );
   }
 }
