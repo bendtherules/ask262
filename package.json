@@ -9,6 +9,7 @@
     "lint:fix:unsafe": "biome check . --write --unsafe",
     "format:fix": "biome format . --write",
     "ingest": "bun run setup/ingest.ts",
+    "verify-db": "bun run test/manual/verify-db.ts",
     "agent": "bun run agent.ts",
     "build": "bun run setup/build_graph.ts",
     "test": "bun test"
