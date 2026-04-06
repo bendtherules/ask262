@@ -128,6 +128,30 @@ export function convertBlockCodeToMarkdown(
   });
 }
 
+/**
+ * Returns the markdown list item prefix based on list type and nesting depth.
+ * Alternates markers to visually distinguish nesting levels:
+ * - Ordered lists: `1.` at even depth, `A.` at odd depth
+ * - Unordered lists: `-` at even depth, `*` at odd depth
+ *
+ * @param isOrdered - Whether the list is ordered (ol) or unordered (ul)
+ * @param depth - Nesting depth (0 = top-level)
+ * @param index - Zero-based item index within its list
+ * @returns Prefix string like "1. ", "A. ", "- ", or "* "
+ */
+function getListItemPrefix(
+  isOrdered: boolean,
+  depth: number,
+  index: number,
+): string {
+  if (isOrdered) {
+    return depth % 2 === 0
+      ? `${index + 1}. `
+      : `${String.fromCharCode(65 + index)}. `;
+  }
+  return depth % 2 === 0 ? "- " : "* ";
+}
+
 function listToMarkdown(
   $: cheerio.CheerioAPI,
   elem: any,
@@ -139,7 +163,7 @@ function listToMarkdown(
   const lines: string[] = [];
 
   $elem.children("li").each((i, li) => {
-    const prefix = isOrdered ? `${i + 1}. ` : "- ";
+    const prefix = getListItemPrefix(isOrdered, depth, i);
     const $li = $(li);
 
     const nestedLists: string[] = [];

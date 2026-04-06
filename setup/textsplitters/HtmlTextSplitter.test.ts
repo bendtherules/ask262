@@ -334,8 +334,8 @@ describe("HTMLTextSplitter", () => {
     const html = [
       '<pre class="list-markdown">',
       "1. First",
-      "  1. Nested 1",
-      "  2. Nested 2",
+      "  A. Nested 1",
+      "  B. Nested 2",
       "2. Second",
       "</pre>",
     ].join("\n");
@@ -343,7 +343,7 @@ describe("HTMLTextSplitter", () => {
     const chunks = await splitter.splitText(html);
 
     expect(chunks).toEqual([
-      "1. First\n  1. Nested 1\n  2. Nested 2\n2. Second",
+      "1. First\n  A. Nested 1\n  B. Nested 2\n2. Second",
     ]);
   });
 });

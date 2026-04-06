@@ -105,8 +105,8 @@ describe("formatHTMLForIngestion", () => {
       expect(lines).toEqual([
         "- Item 1",
         "- Item 2",
-        "  1. Subitem 1",
-        "  2. Subitem 2",
+        "  A. Subitem 1",
+        "  B. Subitem 2",
       ]);
     });
 
@@ -140,10 +140,10 @@ describe("formatHTMLForIngestion", () => {
       expect(lines).toEqual([
         "1. First",
         "2. Second",
-        "  - Alpha",
+        "  * Alpha",
         "    1. Deep 1",
         "    2. Deep 2",
-        "  - Beta",
+        "  * Beta",
       ]);
     });
 
@@ -172,8 +172,8 @@ describe("formatHTMLForIngestion", () => {
         .filter((l) => l.length > 0);
       expect(lines).toEqual([
         "- Item",
-        "  1. Ordered sub",
-        "  - Unordered sub",
+        "  A. Ordered sub",
+        "  * Unordered sub",
       ]);
     });
 
@@ -257,8 +257,8 @@ describe("formatHTMLForIngestion", () => {
         .filter((l) => l.length > 0);
       expect(lines).toEqual([
         "1. First",
-        "  1. Nested 1",
-        "  2. Nested 2",
+        "  A. Nested 1",
+        "  B. Nested 2",
         "2. Second",
       ]);
     });
@@ -351,10 +351,10 @@ describe("formatHTMLForIngestion", () => {
       expect(lines).toEqual([
         "1. First",
         "2. Second",
-        "  - Alpha",
+        "  * Alpha",
         "    1. Deep 1",
         "    2. Deep 2",
-        "  - Beta",
+        "  * Beta",
       ]);
     });
 
@@ -379,8 +379,8 @@ describe("formatHTMLForIngestion", () => {
         .filter((l) => l.length > 0);
       expect(lines).toEqual([
         "1. First",
-        "  1. Nested 1",
-        "  2. Nested 2",
+        "  A. Nested 1",
+        "  B. Nested 2",
         "2. Second",
       ]);
     });
