@@ -111,7 +111,7 @@ export class HTMLTextSplitter extends TextSplitter {
       ...fields,
       chunkOverlap: 0,
       keepSeparator: false,
-      lengthFunction: (text: string) => this.normalizeWhitespace(text).length,
+      lengthFunction: (text: string) => text.trim().length,
     });
 
     this.separators = fields?.separators ?? [];
@@ -230,22 +230,6 @@ export class HTMLTextSplitter extends TextSplitter {
   }
 
   /**
-   * Collapses internal whitespace and trims leading/trailing whitespace.
-   * Preserves newlines between block elements while normalizing spaces.
-   *
-   * Needed so text extraction can preserve raw adjacency first and normalize
-   * only once after boundary-aware joining.
-   */
-  private normalizeWhitespace(text: string): string {
-    return text
-      .replace(/\n[ \t]+/g, "\n") // Remove leading spaces after newlines
-      .replace(/[ \t]+\n/g, "\n") // Remove trailing spaces before newlines
-      .replace(/\n{3,}/g, "\n\n") // Collapse 3+ newlines to 2
-      .replace(/[ \t]{2,}/g, " ") // Collapse multiple spaces/tabs to one
-      .trim();
-  }
-
-  /**
    * Joins multiple nodes into the normalized text the splitter actually emits.
    *
    * Needed so grouped nodes are measured and emitted with the same spacing rules
@@ -273,7 +257,7 @@ export class HTMLTextSplitter extends TextSplitter {
       previousNode = node;
     }
 
-    return this.normalizeWhitespace(result);
+    return result.trim();
   }
 
   /**

@@ -50,16 +50,16 @@ describe("HTMLTextSplitter", () => {
     expect(chunks).toEqual(["Hello\nWorld"]);
   });
 
-  test("normalizes repeated whitespace in emitted text", async () => {
+  test("preserves whitespace as-is from HTML text content", async () => {
     const splitter = new HTMLTextSplitter({
       chunkSize: 64,
     });
 
     const chunks = await splitter.splitText(
-      "<div>  Hello\n\n   World  </div><div>\tAgain</div>",
+      "<div>  Hello\n\n   World  </div><div>Again</div>",
     );
 
-    expect(chunks).toEqual(["Hello\n\nWorld\nAgain"]);
+    expect(chunks).toEqual(["Hello\n\n   World  \nAgain"]);
   });
 
   test("treats separators as soft hints until size pressure exists", async () => {
@@ -324,5 +324,26 @@ describe("HTMLTextSplitter", () => {
     );
 
     expect(chunks).toEqual(["alphabetgamma"]);
+  });
+
+  test("preserves nested list indentation from formatForIngestion output", async () => {
+    const splitter = new HTMLTextSplitter({
+      chunkSize: 200,
+    });
+
+    const html = [
+      '<pre class="list-markdown">',
+      "1. First",
+      "  1. Nested 1",
+      "  2. Nested 2",
+      "2. Second",
+      "</pre>",
+    ].join("\n");
+
+    const chunks = await splitter.splitText(html);
+
+    expect(chunks).toEqual([
+      "1. First\n  1. Nested 1\n  2. Nested 2\n2. Second",
+    ]);
   });
 });
