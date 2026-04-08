@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Add the engine262 repository as a git subtree (squashed)
-# Usage: ./setup/init_engine262.sh
+# Usage: ./setup/initEngine262.sh
 # This will add the repository at ./engine262 using a squashed subtree
 
 set -euo pipefail

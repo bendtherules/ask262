@@ -10,7 +10,7 @@ import {
   createGraphExplorerTool,
   createSectionRetrieverTool,
   createSpecRetrieverTool,
-} from "./agent_tools";
+} from "./agentTools";
 import { EMBEDDING_MODEL, GRAPH_FILE, STORAGE_DIR } from "./constants";
 
 const embeddings = new OllamaEmbeddings({

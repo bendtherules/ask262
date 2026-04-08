@@ -34,7 +34,7 @@
       "name": "Debug: Build Graph",
       "type": "bun",
       "request": "launch",
-      "program": "${workspaceFolder}/setup/build_graph.ts",
+      "program": "${workspaceFolder}/setup/buildGraph.ts",
       "cwd": "${workspaceFolder}",
       "stopOnEntry": false,
       "watchMode": false

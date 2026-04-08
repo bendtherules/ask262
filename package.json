@@ -12,7 +12,7 @@
     "ingest": "bun run setup/ingest.ts",
     "verify-db": "bun run test/manual/verify-db.ts",
     "agent": "bun run agent.ts",
-    "build": "bun run setup/build_graph.ts",
+    "build": "bun run setup/buildGraph.ts",
     "test": "bun test"
   },
   "keywords": [],

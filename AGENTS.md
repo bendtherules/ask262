@@ -22,12 +22,13 @@ Users ask questions like: *"How does the if statement work?"* or *"Which functio
 ```
 ask262/
 ├── agent.ts              # Main ReAct agent - answers user queries
+├── agentTools/           # Agent tool implementations
 ├── constants.ts          # Directory paths and file locations
 ├── config.json           # API keys and endpoints (user-created)
 ├── setup/
 │   ├── ingest.ts         # Ingests spec HTML into vector index
-│   ├── build_graph.ts    # Builds knowledge graph (spec → code mappings)
-│   └── strip-spec-container.ts  # Cleans spec HTML files
+│   ├── buildGraph.ts     # Builds knowledge graph (spec → code mappings)
+│   └── stripSpecContainer.ts   # Cleans spec HTML files
 ├── spec-built/multipage/ # ECMAScript spec HTML files (ecmarkup output)
 ├── engine262/src/        # JavaScript engine implementation code
 ├── storage/              # Vector index persistence (LlamaIndex)
@@ -37,7 +38,7 @@ ask262/
 **Key Files:**
 - `agent.ts`: ReAct agent with two tools - `spec_retriever` (vector search) and `graph_explorer` (graph navigation)
 - `setup/ingest.ts`: Parses HTML files, extracts `emu-clause` sections, chunks them, creates embeddings
-- `setup/build_graph.ts`: Parses spec sections and code functions, creates nodes/edges showing which functions implement which spec sections
+- `setup/buildGraph.ts`: Parses spec sections and code functions, creates nodes/edges showing which functions implement which spec sections
 - `constants.ts`: Defines `STORAGE_DIR`, `SPEC_DIR`, `CODE_DIR`, `GRAPH_FILE`
 
 ## Commands
@@ -45,7 +46,7 @@ ask262/
 **Manual:**
 ```bash
 bun run setup/ingest.ts     # Direct ingest execution
-bun run setup/build_graph.ts # Direct graph build
+bun run setup/buildGraph.ts  # Direct graph build
 bun run agent.ts "Your question here"  # Direct agent execution
 ```
 
