@@ -6,7 +6,7 @@
 import {
   ask262Debug, Agent, ManagedRealm, setSurroundingAgent,
   OrdinaryObjectCreate, CreateBuiltinFunction, CreateDataProperty, Value, skipDebugger,
-} from '../lib/engine262';
+} from '#self';
 
 console.log('=== ask262Debug Verification ===\n');
 

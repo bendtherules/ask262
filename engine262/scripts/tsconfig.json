@@ -1,6 +1,6 @@
 {
   "extends": "../tsconfig.base.json",
-  "include": ["."],
+  "include": [".", "../lib-src/node/verify-ask262-debug.mts"],
   "compilerOptions": {
     "noEmit": true,
     "erasableSyntaxOnly": true,
