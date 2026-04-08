@@ -12,6 +12,7 @@ export { type ErrorType, type Formattable, Throw } from './host-defined/error-me
 export * from './evaluator.mts';
 
 export { captureStack } from './helpers.mts';
+export { ask262Debug, type MarkData } from './ask262-debug.mts';
 export {
   gc, runJobQueue, type ManagedRealmHostDefined, ManagedRealm,
 } from './api.mts';

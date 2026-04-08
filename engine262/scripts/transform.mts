@@ -26,10 +26,11 @@ function getEnclosingConditionalExpression(path: NodePath) {
   return null;
 }
 
-type NeededNames = 'Completion' | 'AbruptCompletion' | 'Assert' | 'Call' | 'IteratorClose' | 'AsyncIteratorClose' | 'Value' | 'skipDebugger';
+type NeededNames = 'Completion' | 'AbruptCompletion' | 'Assert' | 'Call' | 'IteratorClose' | 'AsyncIteratorClose' | 'Value' | 'skipDebugger' | 'ask262Debug';
 
 interface State extends PluginPass {
   needed: Partial<Record<NeededNames, boolean>>;
+  fileRelativePath?: string;
 }
 
 interface Macro<R extends PublicReplacements = Record<string, Node | null>> {
@@ -98,37 +99,71 @@ export default ({ types: t, template }: typeof import('@babel/core')): PluginObj
     `);
   }
 
-  function addSectionFromComments(path: NodePath<t.FunctionDeclaration> | NodePath<t.VariableDeclaration> | NodePath<t.ExportNamedDeclaration>) {
-    if (path.node.leadingComments) {
-      for (const c of path.node.leadingComments) {
-        let name: string;
-        switch (path.type) {
-          case 'FunctionDeclaration':
-            name = path.node.id!.name;
-            break;
-          case 'ExportNamedDeclaration':
-            name = (path.node.declaration as t.FunctionDeclaration).id!.name;
-            break;
-          case 'VariableDeclaration':
-            name = (path.node.declarations[0].id as t.Identifier).name;
-            break;
-          default:
-            throw (path as NodePath).buildCodeFrameError('Internal error: Unsupported path to addSectionFromComments');
-        }
-        const lines = c.value.split('\n');
-        for (const line of lines) {
-          if (/#sec/.test(line)) {
-            const section = line.split(' ').find((l) => l.includes('#sec'))!;
-            const url = section.includes('https') ? section : `https://tc39.es/ecma262/${section}`;
-            const result = path.insertAfter(withSource(c, template.ast(`${name}.section = '${url}';`)));
-            if (path.node.trailingComments) {
-              result[result.length - 1].node.trailingComments = path.node.trailingComments;
-              path.node.trailingComments = null;
+  function createImportAsk262Debug() {
+    return template.ast(`
+      import { ask262Debug } from "#self";
+    `);
+  }
+
+  function addSectionFromComments(
+    path: NodePath<t.FunctionDeclaration> | NodePath<t.VariableDeclaration> | NodePath<t.ExportNamedDeclaration> | NodePath<t.ClassMethod> | NodePath<t.ObjectMethod>,
+    state: State,
+    getName: () => string,
+    getBody: () => t.BlockStatement | null,
+    insertSection: boolean,
+  ) {
+    if (!path.node.leadingComments) return;
+
+    const sectionIds: string[] = [];
+    let url = '';
+    let firstComment: t.Comment | null = null;
+
+    for (const c of path.node.leadingComments) {
+      for (const line of c.value.split('\n')) {
+        const matches = line.match(/#(sec-[a-zA-Z0-9._%-]+)/g);
+        if (matches) {
+          sectionIds.push(...matches.map((m) => m.substring(1)));
+          if (!firstComment) {
+            firstComment = c;
+          }
+          if (!url) {
+            const section = line.split(' ').find((l) => l.includes('#sec'));
+            // Only capture external URLs (skip local/fragment references)
+            if (section?.startsWith('https://')) {
+              url = section;
             }
-            return;
           }
         }
       }
+    }
+
+    if (sectionIds.length === 0) return;
+
+    const name = getName();
+
+    // 1. Keep existing .section (backward compat) - uses first URL
+    // Only applies when caller explicitly allows it
+    if (name && url && firstComment && insertSection) {
+      const result = path.insertAfter(withSource(firstComment, template.ast(`${name}.section = '${url}';`)));
+      if (path.node.trailingComments) {
+        result[result.length - 1].node.trailingComments = path.node.trailingComments;
+        path.node.trailingComments = null;
+      }
+    }
+
+    // 2. Get function body via callback (node-type check done by caller)
+    const body = getBody();
+
+    // 3. Inject mark() at start of function body (only for block bodies)
+    if (body?.type === 'BlockStatement') {
+      const line = path.node.loc?.start.line ?? 0;
+      const sectionIdsStr = JSON.stringify(sectionIds);
+      const filePathStr = JSON.stringify(state.fileRelativePath);
+      const markCall = template.statement(
+        `ask262Debug.mark(${sectionIdsStr}, ${filePathStr}, ${line});`,
+      )();
+      body.body.unshift(markCall);
+      state.needed.ask262Debug = true;
     }
   }
 
@@ -254,8 +289,11 @@ export default ({ types: t, template }: typeof import('@babel/core')): PluginObj
   return {
     visitor: {
       Program: {
-        enter(_path, state) {
+        enter(path, state) {
           state.needed = {};
+          // Capture relative file path from state.filename (relative to src/)
+          const absolutePath = state.filename || '';
+          state.fileRelativePath = absolutePath.replace(/.*\/src\//, '') || 'unknown.mts';
         },
         exit(path, state) {
           if (state.needed.skipDebugger) {
@@ -281,6 +319,9 @@ export default ({ types: t, template }: typeof import('@babel/core')): PluginObj
           }
           if (state.needed.Value) {
             path.unshiftContainer('body', createImportValue());
+          }
+          if (state.needed.ask262Debug) {
+            path.unshiftContainer('body', createImportAsk262Debug());
           }
         },
       },
@@ -438,17 +479,71 @@ export default ({ types: t, template }: typeof import('@babel/core')): PluginObj
           }
         }
       },
-      FunctionDeclaration(path) {
-        addSectionFromComments(path);
+      FunctionDeclaration(path, state) {
+        addSectionFromComments(
+          path,
+          state,
+          () => path.node.id!.name,
+          () => path.node.body,
+          true,
+        );
       },
-      VariableDeclaration(path) {
-        if (path.get('declarations.0.init').isArrowFunctionExpression() || path.get('declarations.0.init').isFunctionExpression()) {
-          addSectionFromComments(path);
+      VariableDeclaration(path, state) {
+        const init = path.get('declarations.0.init');
+        if (init.isFunctionExpression()) {
+          const id = path.node.declarations[0].id as t.Identifier;
+          addSectionFromComments(
+            path,
+            state,
+            () => id.name,
+            () => init.node.body,
+            true,
+          );
+        } else if (init.isArrowFunctionExpression()) {
+          const id = path.node.declarations[0].id as t.Identifier;
+          addSectionFromComments(
+            path,
+            state,
+            () => id.name,
+            () => (init.node.body.type === 'BlockStatement' ? init.node.body : null),
+            true,
+          );
         }
       },
-      ExportNamedDeclaration(path) {
-        if (path.get('declaration').isFunctionDeclaration()) {
-          addSectionFromComments(path);
+      ExportNamedDeclaration(path, state) {
+        const declaration = path.node.declaration;
+        if (declaration?.type === 'FunctionDeclaration') {
+          addSectionFromComments(
+            path,
+            state,
+            () => declaration.id!.name,
+            () => declaration.body,
+            true,
+          );
+        }
+      },
+      ClassMethod(path, state) {
+        const key = path.node.key;
+        if (key.type === 'Identifier') {
+          addSectionFromComments(
+            path,
+            state,
+            () => key.name,
+            () => path.node.body,
+            false,
+          );
+        }
+      },
+      ObjectMethod(path, state) {
+        const key = path.node.key;
+        if (key.type === 'Identifier') {
+          addSectionFromComments(
+            path,
+            state,
+            () => key.name,
+            () => path.node.body,
+            false,
+          );
         }
       },
     },
