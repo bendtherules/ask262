@@ -50,6 +50,10 @@ bun run setup/buildGraph.ts  # Direct graph build
 bun run agent.ts "Your question here"  # Direct agent execution
 ```
 
+## File / Folder Naming
+Name all folders in kebab-case. Ex - hello-world
+Name all files in camelcase. Ex - helloWorld
+
 ## Code Style Guidelines
 
 ### Imports & Modules
