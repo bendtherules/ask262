@@ -22,7 +22,7 @@ Users ask questions like: *"How does the if statement work?"* or *"Which functio
 ```
 ask262/
 ├── agent.ts              # Main ReAct agent - answers user queries
-├── agentTools/           # Agent tool implementations
+├── agent-tools/          # Agent tool implementations
 ├── constants.ts          # Directory paths and file locations
 ├── config.json           # API keys and endpoints (user-created)
 ├── setup/

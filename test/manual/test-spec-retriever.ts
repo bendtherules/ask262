@@ -5,7 +5,7 @@
 
 import * as lancedbSdk from "@lancedb/lancedb";
 import { OllamaEmbeddings } from "@langchain/ollama";
-import { createSpecRetrieverTool } from "../../agentTools";
+import { createSpecRetrieverTool } from "../../agent-tools";
 import { EMBEDDING_MODEL, STORAGE_DIR } from "../../constants";
 
 async function main() {

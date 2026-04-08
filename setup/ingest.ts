@@ -9,7 +9,7 @@ import * as cheerio from "cheerio";
 import { glob } from "glob";
 import ora from "ora";
 import { EMBEDDING_MODEL, SPEC_DIR, STORAGE_DIR } from "../constants";
-import { HTMLTextSplitter } from "./textsplitters";
+import { HTMLTextSplitter } from "./text-splitters";
 import { formatForIngestion } from "./utils/formatHTMLForIngestion";
 
 const embeddings = new OllamaEmbeddings({
