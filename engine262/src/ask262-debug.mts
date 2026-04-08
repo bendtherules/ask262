@@ -29,6 +29,9 @@ class Ask262Debug {
   /** Whether to mark new entries as important */
   private _important = false;
 
+  /** Whether capture is enabled (controlled by startTrace/stopTrace) */
+  private _captureEnabled = false;
+
   /** Map from deduplication key to index in marks array */
   private _markIndex = new Map<string, number>();
 
@@ -47,11 +50,16 @@ class Ask262Debug {
    * Records a mark for spec section entry during execution.
    * Deduplicates based on (sectionIds, file, line) combination.
    * If duplicate found, merges important flags (OR logic).
+   * Only captures if tracing is enabled (via startTrace()).
    * @param sectionIds - Array of ECMAScript spec section IDs
    * @param file - Relative file path from engine262/src/
    * @param line - Line number in source file (1-indexed)
    */
   mark(sectionIds: string[], file: string, line: number) {
+    if (!this._captureEnabled) {
+      return;
+    }
+
     const key = this._makeKey(sectionIds, file, line);
     const existingIndex = this._markIndex.get(key);
 
@@ -73,6 +81,22 @@ class Ask262Debug {
 
     this._markIndex.set(key, this.marks.length);
     this.marks.push(newMark);
+  }
+
+  /**
+   * Enables capture of marks during execution.
+   * Marks will be recorded until stopTrace() is called.
+   */
+  startTrace() {
+    this._captureEnabled = true;
+  }
+
+  /**
+   * Disables capture of marks during execution.
+   * Marks will be ignored until startTrace() is called again.
+   */
+  stopTrace() {
+    this._captureEnabled = false;
   }
 
   /**

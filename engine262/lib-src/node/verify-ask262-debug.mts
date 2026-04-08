@@ -41,6 +41,7 @@ realm.scope(() => {
   skipDebugger(CreateDataProperty(debugObj, Value('stopImportant'), stopImportant));
 });
 
+ask262Debug.startTrace();
 realm.evaluateScript(`
   // Array.prototype.every - should hit sec-array.prototype.every
   ask262Debug.startImportant();
@@ -50,6 +51,7 @@ realm.evaluateScript(`
   // Proxy creation - should hit sec-proxycreate or similar
   new Proxy({}, {});
 `);
+ask262Debug.stopTrace();
 
 // 3. Verify marks were captured
 console.log('3. Checking marks...');
@@ -60,6 +62,18 @@ if (marks.length === 0) {
   console.error('FAIL: No marks captured');
   process.exit(1);
 }
+
+// 3a. Assert that Array.prototype.every section is found and marked important
+const everyMark = marks.find((m) => m.sectionIds.some((id) => id.includes('array.prototype.every')));
+if (!everyMark) {
+  console.error('FAIL: sec-array.prototype.every not found in marks');
+  process.exit(1);
+}
+if (!everyMark.important) {
+  console.error('FAIL: sec-array.prototype.every found but not marked as important');
+  process.exit(1);
+}
+console.log('   ✓ Found sec-array.prototype.every (marked as important)\n');
 
 // 4. Show sample marks
 console.log('4. Sample marks:');
