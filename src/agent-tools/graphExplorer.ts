@@ -21,12 +21,12 @@ const graphExplorerSchema = z.object({
  */
 export function createGraphExplorerTool(graph: Graph) {
   return new DynamicStructuredTool({
-    name: "graph_explorer",
+    name: "ask262_graph_explorer",
     description:
       "Explores structural relationships between specification sections and implementation code (functions). Use this to find which spec section a function implements.",
     schema: graphExplorerSchema,
     func: async ({ query }) => {
-      console.log(`[Tool: graph_explorer] Querying for: ${query}`);
+      console.log(`[Tool: ask262_graph_explorer] Querying for: ${query}`);
 
       let nodeId = query;
       if (!graph.hasNode(nodeId)) {
@@ -54,7 +54,7 @@ export function createGraphExplorerTool(graph: Graph) {
         return result;
       }
 
-      return `No information found in graph for ${query}. Use spec_retriever to search text.`;
+      return `No information found in graph for ${query}. Use ask262_search_spec_sections to search text.`;
     },
   });
 }

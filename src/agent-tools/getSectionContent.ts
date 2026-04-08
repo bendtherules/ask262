@@ -1,5 +1,5 @@
 /**
- * Section chunk retriever tool.
+ * Get section content tool.
  * Retrieves all text chunks from a specific specification section by sectionid.
  */
 
@@ -7,24 +7,26 @@ import type { Table } from "@lancedb/lancedb";
 import { DynamicStructuredTool } from "@langchain/core/tools";
 import { z } from "zod";
 
-const sectionRetrieverSchema = z.object({
+const getSectionContentSchema = z.object({
   sectionId: z
     .string()
     .describe("The section ID (e.g., 'sec-if-statement') to fetch chunks for"),
 });
 
 /**
- * Creates the section retriever tool.
+ * Creates the get section content tool.
+ * Retrieves all text chunks from a specific specification section by sectionid.
+ * Supports recursive fetching - if a section has children, it will fetch all descendants.
  * @param table - LanceDB table containing spec vectors
  */
-export function createSectionRetrieverTool(table: Table) {
+export function createGetSectionContentTool(table: Table) {
   return new DynamicStructuredTool({
-    name: "fetch_section_chunks",
+    name: "ask262_get_section_content",
     description:
       "Retrieves all text chunks from a specific specification section by sectionid. " +
       "Supports recursive fetching - if a section has children, it will fetch all descendants. " +
       "Use this to get complete content when you see 'Subsection available' or 'partial section' references.",
-    schema: sectionRetrieverSchema,
+    schema: getSectionContentSchema,
     func: async ({ sectionId }) => {
       const allDocs: string[] = [];
       const queue: string[] = [sectionId];

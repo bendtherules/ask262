@@ -40,12 +40,12 @@ async function loadEngine262() {
  */
 export function createEvaluateInEngine262Tool() {
   return new DynamicStructuredTool({
-    name: "evaluate_in_engine262",
+    name: "ask262_evaluate_in_engine262",
     description:
       "Executes JavaScript code in the engine262 JavaScript engine and captures which ECMAScript specification sections are hit during execution. Returns the full marks array as JSON. Useful for understanding how specific JavaScript operations map to the ECMAScript spec.",
     schema: evaluateSchema,
     func: async ({ code }) => {
-      console.log(`[Tool: evaluate_in_engine262] Executing code...`);
+      console.log(`[Tool: ask262_evaluate_in_engine262] Executing code...`);
 
       try {
         const engine = await loadEngine262();
@@ -130,7 +130,7 @@ export function createEvaluateInEngine262Tool() {
         const marks = ask262Debug.marks;
 
         console.log(
-          `[Tool: evaluate_in_engine262] Captured ${marks.length} unique marks`,
+          `[Tool: ask262_evaluate_in_engine262] Captured ${marks.length} unique marks`,
         );
 
         // Filter and group marks by important flag
@@ -146,7 +146,7 @@ export function createEvaluateInEngine262Tool() {
         // Return compressed JSON
         return JSON.stringify(result);
       } catch (error) {
-        console.error(`[Tool: evaluate_in_engine262] Error: ${error}`);
+        console.error(`[Tool: ask262_evaluate_in_engine262] Error: ${error}`);
         return `Error executing code in engine262: ${error instanceof Error ? error.message : String(error)}`;
       }
     },

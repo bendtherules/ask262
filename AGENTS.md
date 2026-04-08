@@ -26,8 +26,8 @@ ask262/
 │   ├── constants.ts          # Directory paths and model configs
 │   ├── agent-tools/          # Tool implementations (spec retriever, graph explorer)
 │   │   ├── index.ts          # Tool exports
-│   │   ├── specRetriever.ts  # Vector search tool
-│   │   ├── sectionRetriever.ts   # Section chunk retrieval tool
+│   │   ├── searchSpecSections.ts   # Vector search tool
+│   │   ├── getSectionContent.ts    # Section chunk retrieval tool
 │   │   ├── graphExplorer.ts  # Knowledge graph navigation tool
 │   │   ├── evaluateInEngine262.ts  # Execute JS and capture spec marks
 │   │   └── reranker.ts       # Document reranking utility
@@ -41,7 +41,7 @@ ask262/
 │   └── test/                 # Manual verification tests
 │       └── manual/
 │           ├── verify-db.ts              # Verify database contents
-│           ├── test-spec-retriever.ts    # Test spec retriever tool
+│           ├── test-search-spec-sections.ts    # Test vector search tool
 │           └── test-evaluate-in-engine262.ts  # Test evaluate tool
 ├── config.json               # API keys and endpoints (user-created)
 ├── spec-built/multipage/     # ECMAScript spec HTML files
@@ -64,7 +64,7 @@ bun run format:fix      # Format code with Biome
 bun run type-check      # TypeScript check (no emit)
 bun test                # Run all tests
 bun run test-evaluate   # Test evaluate in engine262 tool
-bun run test-spec-retriever "query"  # Test spec retriever tool with query
+bun run test-search-spec-sections "query"  # Test vector search tool with query
 bun run agent "Query"   # Run agent with question
 ```
 

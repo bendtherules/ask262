@@ -8,9 +8,9 @@ import Graph from "graphology";
 import { AgentExecutor, createReactAgent } from "langchain/agents";
 import {
   createEvaluateInEngine262Tool,
+  createGetSectionContentTool,
   createGraphExplorerTool,
-  createSectionRetrieverTool,
-  createSpecRetrieverTool,
+  createSearchSpecSectionsTool,
 } from "./agent-tools";
 import {
   CONFIG_FILE,
@@ -45,11 +45,11 @@ Available tools: {tool_names}
 {tools}
 
 CRITICAL INSTRUCTIONS:
-1. ALWAYS prefer using the provided tools ('spec_retriever', 'fetch_section_chunks', 'graph_explorer', and 'evaluate_in_engine262') to answer questions.
+1. ALWAYS prefer using the provided tools ('ask262_search_spec_sections', 'ask262_get_section_content', 'ask262_graph_explorer', and 'ask262_evaluate_in_engine262') to answer questions.
 2. Do NOT rely on your internal knowledge of JavaScript or the ECMAScript specification.
-3. If the user asks about a function, you MUST first use 'graph_explorer' to find the associated specification section.
-4. You MUST then use 'fetch_section_chunks' to read the actual text of that specification section before answering.
-5. When the user provides JavaScript code or asks about runtime behavior, use 'evaluate_in_engine262' to execute the code and see which spec sections are hit during execution.
+3. If the user asks about a function, you MUST first use 'ask262_graph_explorer' to find the associated specification section.
+4. You MUST then use 'ask262_get_section_content' to read the actual text of that specification section before answering.
+5. When the user provides JavaScript code or asks about runtime behavior, use 'ask262_evaluate_in_engine262' to execute the code and see which spec sections are hit during execution.
 6. Base your explanations ONLY on the information retrieved from the tools.
 7. If the tools do not provide enough information, state that clearly rather than guessing from your internal knowledge.
 
@@ -72,20 +72,33 @@ async function main() {
   graph.import(graphData);
 
   // Create tools using factory functions
-  const specRetrieverTool = createSpecRetrieverTool(table, embeddings);
-  const sectionRetrieverTool = createSectionRetrieverTool(table);
+  const searchSpecSectionsTool = createSearchSpecSectionsTool(
+    table,
+    embeddings,
+  );
+  const getSectionContentTool = createGetSectionContentTool(table);
   const graphTool = createGraphExplorerTool(graph);
   const evaluateTool = createEvaluateInEngine262Tool();
 
   const agent = await createReactAgent({
     llm,
-    tools: [specRetrieverTool, sectionRetrieverTool, graphTool, evaluateTool],
+    tools: [
+      searchSpecSectionsTool,
+      getSectionContentTool,
+      graphTool,
+      evaluateTool,
+    ],
     prompt,
   });
 
   const agentExecutor = new AgentExecutor({
     agent,
-    tools: [specRetrieverTool, sectionRetrieverTool, graphTool, evaluateTool],
+    tools: [
+      searchSpecSectionsTool,
+      getSectionContentTool,
+      graphTool,
+      evaluateTool,
+    ],
   });
 
   console.log("Agent is ready!");

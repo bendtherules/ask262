@@ -12,7 +12,7 @@
     "ingest": "bun run src/setup/ingest.ts",
     "verify-db": "bun run src/test/manual/verify-db.ts",
     "test-evaluate": "bun run src/test/manual/test-evaluate-in-engine262.ts",
-    "test-spec-retriever": "bun run src/test/manual/test-spec-retriever.ts",
+    "test-search-spec-sections": "bun run src/test/manual/test-search-spec-sections.ts",
     "agent": "bun run src/agent.ts",
     "build": "bun run src/setup/buildGraph.ts",
     "test": "bun test"
