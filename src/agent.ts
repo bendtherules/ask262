@@ -11,13 +11,18 @@ import {
   createSectionRetrieverTool,
   createSpecRetrieverTool,
 } from "./agent-tools";
-import { EMBEDDING_MODEL, GRAPH_FILE, STORAGE_DIR } from "./constants";
+import {
+  CONFIG_FILE,
+  EMBEDDING_MODEL,
+  GRAPH_FILE,
+  STORAGE_DIR,
+} from "./constants";
 
 const embeddings = new OllamaEmbeddings({
   model: EMBEDDING_MODEL,
 });
 
-const config = JSON.parse(fs.readFileSync("./config.json", "utf-8"));
+const config = JSON.parse(fs.readFileSync(CONFIG_FILE, "utf-8"));
 const apiKey = config.NVIDIA_API_KEY;
 const baseURL = config.NVIDIA_API_BASE;
 

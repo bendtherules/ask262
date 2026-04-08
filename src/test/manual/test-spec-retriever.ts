@@ -1,6 +1,6 @@
 /**
  * Manual test script for spec_retriever agent tool
- * Usage: bun run test/manual/test-spec-retriever.ts "your search query"
+ * Usage: bun run src/test/manual/test-spec-retriever.ts "your search query"
  */
 
 import * as lancedbSdk from "@lancedb/lancedb";

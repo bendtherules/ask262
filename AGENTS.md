@@ -21,26 +21,27 @@ Users ask questions like: *"How does the if statement work?"* or *"Which functio
 
 ```
 ask262/
-├── agent.ts                  # Main ReAct agent - answers user queries
-├── agent-tools/              # Tool implementations (spec retriever, graph explorer)
-│   ├── index.ts              # Tool exports
-│   ├── specRetriever.ts      # Vector search tool
-│   ├── sectionRetriever.ts   # Section chunk retrieval tool
-│   ├── graphExplorer.ts      # Knowledge graph navigation tool
-│   └── reranker.ts           # Document reranking utility
-├── constants.ts              # Directory paths and model configs
+├── src/
+│   ├── agent.ts              # Main ReAct agent - answers user queries
+│   ├── constants.ts          # Directory paths and model configs
+│   ├── agent-tools/          # Tool implementations (spec retriever, graph explorer)
+│   │   ├── index.ts          # Tool exports
+│   │   ├── specRetriever.ts  # Vector search tool
+│   │   ├── sectionRetriever.ts   # Section chunk retrieval tool
+│   │   ├── graphExplorer.ts  # Knowledge graph navigation tool
+│   │   └── reranker.ts       # Document reranking utility
+│   └── setup/                # Data ingestion and graph building
+│       ├── ingest.ts         # Ingests spec HTML into vector index
+│       ├── buildGraph.ts     # Builds knowledge graph
+│       ├── stripSpecContainer.ts # Cleans spec HTML files
+│       ├── htmlAddInternalMethodLink.ts  # Adds internal method links
+│       ├── text-splitters/   # Text chunking utilities
+│       └── utils/            # Formatting utilities
+│   └── test/                 # Manual verification tests
+│       └── manual/
+│           ├── verify-db.ts  # Verify database contents
+│           └── test-spec-retriever.ts
 ├── config.json               # API keys and endpoints (user-created)
-├── setup/                    # Data ingestion and graph building
-│   ├── ingest.ts             # Ingests spec HTML into vector index
-│   ├── buildGraph.ts         # Builds knowledge graph
-│   ├── stripSpecContainer.ts # Cleans spec HTML files
-│   ├── htmlAddInternalMethodLink.ts  # Adds internal method links
-│   ├── text-splitters/         # Text chunking utilities
-│   └── utils/                  # Formatting utilities
-├── test/                     # Manual verification tests
-│   ├── manual/
-│   │   ├── verify-db.ts      # Verify database contents
-│   │   └── test-spec-retriever.ts
 ├── spec-built/multipage/     # ECMAScript spec HTML files
 ├── engine262/src/            # JavaScript engine implementation
 ├── storage/                  # Vector index persistence (LanceDB)

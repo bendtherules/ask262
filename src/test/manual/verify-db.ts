@@ -3,17 +3,17 @@
  * Manual verification script for inspecting LanceDB documents/chunks.
  *
  * Usage:
- *   bun run test/manual/verify-db.ts                    # Show summary (default command)
- *   bun run test/manual/verify-db.ts summary            # Show database summary
- *   bun run test/manual/verify-db.ts list               # List all sections
- *   bun run test/manual/verify-db.ts section <id>       # Show chunks for a section
- *   bun run test/manual/verify-db.ts search "query"     # Search by vector similarity (semantic search)
- *   bun run test/manual/verify-db.ts tree               # Show full section hierarchy
- *   bun run test/manual/verify-db.ts tree sec-ecmascript-language-source-code  # Show subtree from section
- *   bun run test/manual/verify-db.ts sample             # Show random samples
- *   bun run test/manual/verify-db.ts large              # Show large documents
- *   bun run test/manual/verify-db.ts --help            # Show help
- *   bun run test/manual/verify-db.ts <command> --help  # Show help for specific command
+ *   bun run src/test/manual/verify-db.ts                    # Show summary (default command)
+ *   bun run src/test/manual/verify-db.ts summary            # Show database summary
+ *   bun run src/test/manual/verify-db.ts list               # List all sections
+ *   bun run src/test/manual/verify-db.ts section <id>       # Show chunks for a section
+ *   bun run src/test/manual/verify-db.ts search "query"     # Search by vector similarity (semantic search)
+ *   bun run src/test/manual/verify-db.ts tree               # Show full section hierarchy
+ *   bun run src/test/manual/verify-db.ts tree sec-ecmascript-language-source-code  # Show subtree from section
+ *   bun run src/test/manual/verify-db.ts sample             # Show random samples
+ *   bun run src/test/manual/verify-db.ts large              # Show large documents
+ *   bun run src/test/manual/verify-db.ts --help            # Show help
+ *   bun run src/test/manual/verify-db.ts <command> --help  # Show help for specific command
  */
 
 import fs from "node:fs";
