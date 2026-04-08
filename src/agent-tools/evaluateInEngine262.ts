@@ -45,8 +45,6 @@ export function createEvaluateInEngine262Tool() {
       "Executes JavaScript code in the engine262 JavaScript engine and captures which ECMAScript specification sections are hit during execution. Returns the full marks array as JSON. Useful for understanding how specific JavaScript operations map to the ECMAScript spec.",
     schema: evaluateSchema,
     func: async ({ code }) => {
-      console.log(`[Tool: ask262_evaluate_in_engine262] Executing code...`);
-
       try {
         const engine = await loadEngine262();
         const ask262Debug = engine.ask262Debug as {
@@ -128,10 +126,6 @@ export function createEvaluateInEngine262Tool() {
 
         // Get captured marks
         const marks = ask262Debug.marks;
-
-        console.log(
-          `[Tool: ask262_evaluate_in_engine262] Captured ${marks.length} unique marks`,
-        );
 
         // Filter and group marks by important flag
         const importantMarks = marks.filter((m) => m.important);

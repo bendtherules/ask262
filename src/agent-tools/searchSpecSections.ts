@@ -36,10 +36,6 @@ export function createSearchSpecSectionsTool(
       // Search using LanceDB directly, limit to top 5 results
       const results = await table.search(queryVector).limit(5).toArray();
 
-      console.log(
-        `[ask262_search_spec_sections] Query: "${query.slice(0, 50)}..." - Fetched ${results.length} results`,
-      );
-
       // Return documents with metadata as JSON
       const output = results.map((r: Record<string, unknown>) => ({
         sectionId: String(r.sectionid || "unknown"),

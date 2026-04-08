@@ -26,8 +26,6 @@ export function createGraphExplorerTool(graph: Graph) {
       "Explores structural relationships between specification sections and implementation code (functions). Use this to find which spec section a function implements.",
     schema: graphExplorerSchema,
     func: async ({ query }) => {
-      console.log(`[Tool: ask262_graph_explorer] Querying for: ${query}`);
-
       let nodeId = query;
       if (!graph.hasNode(nodeId)) {
         if (graph.hasNode(`func-${query}`)) {
