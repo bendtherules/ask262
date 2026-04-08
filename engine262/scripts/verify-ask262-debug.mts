@@ -5,7 +5,8 @@
  */
 import {
   ask262Debug, Agent, ManagedRealm, setSurroundingAgent,
-} from '#self';
+  OrdinaryObjectCreate, CreateBuiltinFunction, CreateDataProperty, Value, skipDebugger,
+} from '../lib/engine262';
 
 console.log('=== ask262Debug Verification ===\n');
 
@@ -23,9 +24,28 @@ const agent = new Agent();
 setSurroundingAgent(agent);
 const realm = new ManagedRealm();
 
+realm.scope(() => {
+  const debugObj = OrdinaryObjectCreate(agent.intrinsic('%Object.prototype%'));
+  skipDebugger(CreateDataProperty(realm.GlobalObject, Value('ask262Debug'), debugObj));
+
+  const startImportant = CreateBuiltinFunction(() => {
+    ask262Debug.startImportant();
+    return Value.undefined;
+  }, 0, Value('startImportant'), []);
+  skipDebugger(CreateDataProperty(debugObj, Value('startImportant'), startImportant));
+
+  const stopImportant = CreateBuiltinFunction(() => {
+    ask262Debug.stopImportant();
+    return Value.undefined;
+  }, 0, Value('stopImportant'), []);
+  skipDebugger(CreateDataProperty(debugObj, Value('stopImportant'), stopImportant));
+});
+
 realm.evaluateScript(`
   // Array.prototype.every - should hit sec-array.prototype.every
+  ask262Debug.startImportant();
   [1, 2, 3].every(x => x > 0);
+  ask262Debug.stopImportant();
   
   // Proxy creation - should hit sec-proxycreate or similar
   new Proxy({}, {});
