@@ -11,6 +11,14 @@ const getSectionContentSchema = z.object({
   sectionId: z
     .string()
     .describe("The section ID (e.g., 'sec-if-statement') to fetch chunks for"),
+  recursive: z
+    .boolean()
+    .default(true)
+    .describe(
+      "If true, recursively fetches content from all child sections and their descendants. " +
+        "If false, only returns content from the specified section itself. " +
+        "Use false when you only need the specific section's content without subsections.",
+    ),
 });
 
 /**
@@ -24,10 +32,10 @@ export function createGetSectionContentTool(table: Table) {
     name: "ask262_get_section_content",
     description:
       "Retrieves all text chunks from a specific specification section by sectionid. " +
-      "Supports recursive fetching - if a section has children, it will fetch all descendants. " +
+      "Supports recursive fetching - if recursive=true and the section has children, it will fetch all descendants. " +
       "Use this to get complete content when you see 'Subsection available' or 'partial section' references.",
     schema: getSectionContentSchema,
-    func: async ({ sectionId }) => {
+    func: async ({ sectionId, recursive }) => {
       const allDocs: string[] = [];
       const queue: string[] = [sectionId];
       const visited = new Set<string>();
@@ -61,8 +69,9 @@ export function createGetSectionContentTool(table: Table) {
             allDocs.push(typedResult.text);
           }
 
-          // Add children to queue for recursive fetching
+          // Add children to queue for recursive fetching only if recursive is true
           if (
+            recursive &&
             typedResult.childrensectionids &&
             Array.isArray(typedResult.childrensectionids)
           ) {
