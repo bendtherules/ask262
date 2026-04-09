@@ -7,18 +7,26 @@ import type { Table } from "@lancedb/lancedb";
 import { DynamicStructuredTool } from "@langchain/core/tools";
 import { z } from "zod";
 
-const getSectionContentSchema = z.object({
-  sectionId: z
-    .string()
-    .describe("The section ID (e.g., 'sec-if-statement') to fetch chunks for"),
-  recursive: z
-    .boolean()
-    .default(true)
-    .describe(
+/**
+ * Tool metadata for reuse in OpenCode tools.
+ */
+export const toolMetadata = {
+  description:
+    "Retrieves all text chunks from a specific specification section by sectionid. " +
+    "Supports recursive fetching - if recursive=true and the section has children, it will fetch all descendants. " +
+    "Use this to get complete content when you see 'Subsection available' or 'partial section' references.",
+  args: {
+    sectionId: "The section ID (e.g., 'sec-if-statement') to fetch chunks for",
+    recursive:
       "If true, recursively fetches content from all child sections and their descendants. " +
-        "If false, only returns content from the specified section itself. " +
-        "Use false when you only need the specific section's content without subsections.",
-    ),
+      "If false, only returns content from the specified section itself. " +
+      "Use false when you only need the specific section's content without subsections.",
+  },
+};
+
+const getSectionContentSchema = z.object({
+  sectionId: z.string().describe(toolMetadata.args.sectionId),
+  recursive: z.boolean().default(true).describe(toolMetadata.args.recursive),
 });
 
 /**
@@ -30,10 +38,7 @@ const getSectionContentSchema = z.object({
 export function createGetSectionContentTool(table: Table) {
   return new DynamicStructuredTool({
     name: "ask262_get_section_content",
-    description:
-      "Retrieves all text chunks from a specific specification section by sectionid. " +
-      "Supports recursive fetching - if recursive=true and the section has children, it will fetch all descendants. " +
-      "Use this to get complete content when you see 'Subsection available' or 'partial section' references.",
+    description: toolMetadata.description,
     schema: getSectionContentSchema,
     func: async ({ sectionId, recursive }) => {
       const allDocs: string[] = [];

@@ -7,8 +7,23 @@
 import { DynamicStructuredTool } from "@langchain/core/tools";
 import { z } from "zod";
 
+/**
+ * Tool metadata for reuse in OpenCode tools.
+ */
+export const toolMetadata = {
+  description:
+    "Executes JavaScript code in the engine262 JavaScript engine and captures which ECMAScript specification sections are hit during execution. " +
+    "Returns the full marks array as JSON. Useful for understanding how specific JavaScript operations map to the ECMAScript spec. " +
+    "ask262Debug is available globally in the execution context (no import needed). " +
+    "Use ask262Debug.startImportant() and ask262Debug.stopImportant() to mark important sections. " +
+    "Example: ask262Debug.startImportant(); let x = 1 + 2; ask262Debug.stopImportant();",
+  args: {
+    code: "JavaScript code to execute in engine262 (e.g., '[1,2,3].map(x => x * 2)')",
+  },
+};
+
 const evaluateSchema = z.object({
-  code: z.string().describe("JavaScript code to execute in engine262"),
+  code: z.string().describe(toolMetadata.args.code),
 });
 
 // Type definitions for engine262 module
@@ -41,12 +56,7 @@ async function loadEngine262() {
 export function createEvaluateInEngine262Tool() {
   return new DynamicStructuredTool({
     name: "ask262_evaluate_in_engine262",
-    description:
-      "Executes JavaScript code in the engine262 JavaScript engine and captures which ECMAScript specification sections are hit during execution. " +
-      "Returns the full marks array as JSON. Useful for understanding how specific JavaScript operations map to the ECMAScript spec. " +
-      "ask262Debug is available globally in the execution context (no import needed). " +
-      "Use ask262Debug.startImportant() and ask262Debug.stopImportant() to mark important sections. " +
-      "Example: ask262Debug.startImportant(); let x = 1 + 2; ask262Debug.stopImportant();",
+    description: toolMetadata.description,
     schema: evaluateSchema,
     func: async ({ code }) => {
       try {

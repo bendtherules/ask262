@@ -6,19 +6,15 @@
 import { tool } from "@opencode-ai/plugin";
 import * as lancedbSdk from "@lancedb/lancedb";
 import { OllamaEmbeddings } from "@langchain/ollama";
-import { createSearchSpecSectionsTool } from "../../src/agent-tools";
+import {
+  createSearchSpecSectionsTool,
+  toolMetadata,
+} from "../../src/agent-tools/searchSpecSections";
 
 export default tool({
-  description:
-    "Vector search the ECMAScript specification for sections relevant to a query. " +
-    "Returns JSON array with sectionId, sectionTitle, score, partIndex, totalParts, and content. " +
-    "Use this when you need to find spec sections related to a JavaScript topic or question.",
+  description: toolMetadata.description,
   args: {
-    query: tool.schema
-      .string()
-      .describe(
-        "The search query to find relevant specification sections (e.g., 'how does array map work')",
-      ),
+    query: tool.schema.string().describe(toolMetadata.args.query),
   },
   async execute(args, context) {
     const { query } = args;

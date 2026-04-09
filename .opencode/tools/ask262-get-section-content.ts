@@ -5,27 +5,19 @@
 
 import { tool } from "@opencode-ai/plugin";
 import * as lancedbSdk from "@lancedb/lancedb";
-import { createGetSectionContentTool } from "../../src/agent-tools";
+import {
+  createGetSectionContentTool,
+  toolMetadata,
+} from "../../src/agent-tools/getSectionContent";
 
 export default tool({
-  description:
-    "Retrieves all text chunks from a specific ECMAScript specification section by section ID. " +
-    "Supports recursive fetching - if recursive=true and the section has children, it will fetch all descendants. " +
-    "Use this to get complete spec text when you know the section ID (e.g., 'sec-if-statement').",
+  description: toolMetadata.description,
   args: {
-    sectionId: tool.schema
-      .string()
-      .describe(
-        "The section ID (e.g., 'sec-if-statement', 'sec-array-prototype-map') to fetch content for",
-      ),
+    sectionId: tool.schema.string().describe(toolMetadata.args.sectionId),
     recursive: tool.schema
       .boolean()
       .default(true)
-      .describe(
-        "If true, recursively fetches content from all child sections and descendants. " +
-          "If false, only returns content from the specified section itself. " +
-          "Use false when you only need the specific section's content without subsections.",
-      ),
+      .describe(toolMetadata.args.recursive),
   },
   async execute(args, context) {
     const { sectionId, recursive } = args;

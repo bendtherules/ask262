@@ -3,8 +3,17 @@
  * Exports all tool factory functions and utilities.
  */
 
-export { createEvaluateInEngine262Tool } from "./evaluateInEngine262";
-export { createGetSectionContentTool } from "./getSectionContent";
+export {
+  createEvaluateInEngine262Tool,
+  toolMetadata as evaluateToolMetadata,
+} from "./evaluateInEngine262";
+export {
+  createGetSectionContentTool,
+  toolMetadata as sectionContentToolMetadata,
+} from "./getSectionContent";
 export { createGraphExplorerTool } from "./graphExplorer";
 export { type RerankResult, rerankDocuments } from "./reranker";
-export { createSearchSpecSectionsTool } from "./searchSpecSections";
+export {
+  createSearchSpecSectionsTool,
+  toolMetadata as searchSpecToolMetadata,
+} from "./searchSpecSections";

@@ -4,22 +4,15 @@
  */
 
 import { tool } from "@opencode-ai/plugin";
-import { createEvaluateInEngine262Tool } from "../../src/agent-tools";
+import {
+  createEvaluateInEngine262Tool,
+  toolMetadata,
+} from "../../src/agent-tools/evaluateInEngine262";
 
 export default tool({
-  description:
-    "Executes JavaScript code in the engine262 JavaScript engine and captures which ECMAScript specification sections are hit during execution. " +
-    "Returns JSON with importantSections and otherSections arrays. " +
-    "Use this to understand how specific JavaScript operations map to the ECMAScript spec. " +
-    "ask262Debug is available globally in the execution context (no import needed). " +
-    "Use ask262Debug.startImportant() and ask262Debug.stopImportant() to mark important sections. " +
-    "Example: ask262Debug.startImportant(); let x = 1 + 2; ask262Debug.stopImportant();",
+  description: toolMetadata.description,
   args: {
-    code: tool.schema
-      .string()
-      .describe(
-        "JavaScript code to execute in engine262 (e.g., '[1,2,3].map(x => x * 2)')",
-      ),
+    code: tool.schema.string().describe(toolMetadata.args.code),
   },
   async execute(args) {
     const { code } = args;

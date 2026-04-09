@@ -8,10 +8,23 @@ import { DynamicStructuredTool } from "@langchain/core/tools";
 import type { OllamaEmbeddings } from "@langchain/ollama";
 import { z } from "zod";
 
+/**
+ * Tool metadata for reuse in OpenCode tools.
+ */
+export const toolMetadata = {
+  description:
+    "Vector search the ECMAScript specification for sections relevant to a query. " +
+    "Returns JSON array with sectionId, sectionTitle, score, partIndex, totalParts, and content. " +
+    "partIndex and totalParts indicate which chunk of a multi-part section this is " +
+    "(0-indexed, partIndex+1/totalParts), null if single-part.",
+  args: {
+    query:
+      "The search query to find relevant specification sections (e.g., 'how does array map work')",
+  },
+};
+
 const searchSpecSchema = z.object({
-  query: z
-    .string()
-    .describe("The search query to find relevant specification sections"),
+  query: z.string().describe(toolMetadata.args.query),
 });
 
 /**
@@ -26,8 +39,7 @@ export function createSearchSpecSectionsTool(
 ) {
   return new DynamicStructuredTool({
     name: "ask262_search_spec_sections",
-    description:
-      "Vector search the ECMAScript specification for sections relevant to a query. Returns JSON array with sectionId, sectionTitle, score, partIndex, totalParts, and content. partIndex and totalParts indicate which chunk of a multi-part section this is (0-indexed, partIndex+1/totalParts), null if single-part.",
+    description: toolMetadata.description,
     schema: searchSpecSchema,
     func: async ({ query }) => {
       // Generate embedding for the query
