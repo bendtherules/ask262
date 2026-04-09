@@ -10,7 +10,7 @@ import { createSearchSpecSectionsTool } from "../../src/agent-tools";
 
 export default tool({
   description:
-    "Searches the ECMAScript specification for sections relevant to a query. " +
+    "Vector search the ECMAScript specification for sections relevant to a query. " +
     "Returns JSON array with sectionId, sectionTitle, score, partIndex, totalParts, and content. " +
     "Use this when you need to find spec sections related to a JavaScript topic or question.",
   args: {

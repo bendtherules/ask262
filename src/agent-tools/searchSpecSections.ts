@@ -27,7 +27,7 @@ export function createSearchSpecSectionsTool(
   return new DynamicStructuredTool({
     name: "ask262_search_spec_sections",
     description:
-      "Searches the ECMAScript specification for sections relevant to a query. Returns JSON array with sectionId, sectionTitle, score, partIndex, totalParts, and content. partIndex and totalParts indicate which chunk of a multi-part section this is (0-indexed, partIndex+1/totalParts), null if single-part.",
+      "Vector search the ECMAScript specification for sections relevant to a query. Returns JSON array with sectionId, sectionTitle, score, partIndex, totalParts, and content. partIndex and totalParts indicate which chunk of a multi-part section this is (0-indexed, partIndex+1/totalParts), null if single-part.",
     schema: searchSpecSchema,
     func: async ({ query }) => {
       // Generate embedding for the query
