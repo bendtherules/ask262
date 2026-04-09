@@ -47,7 +47,7 @@ Available tools: {tool_names}
 CRITICAL INSTRUCTIONS:
 1. ALWAYS prefer using the provided tools ('ask262_search_spec_sections', 'ask262_get_section_content', 'ask262_graph_explorer', and 'ask262_evaluate_in_engine262') to answer questions.
 2. Do NOT rely on your internal knowledge of JavaScript or the ECMAScript specification.
-3. If the user asks about a function, you MUST first use 'ask262_graph_explorer' to find the associated specification section.
+3. If the user asks about a function, you MUST first use 'ask262_search_spec_sections' to find the associated specification section.
 4. You MUST then use 'ask262_get_section_content' to read the actual text of that specification section before answering.
 5. When the user provides JavaScript code or asks about runtime behavior, use 'ask262_evaluate_in_engine262' to execute the code and see which spec sections are hit during execution.
 6. Base your explanations ONLY on the information retrieved from the tools.
