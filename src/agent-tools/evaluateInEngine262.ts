@@ -42,7 +42,11 @@ export function createEvaluateInEngine262Tool() {
   return new DynamicStructuredTool({
     name: "ask262_evaluate_in_engine262",
     description:
-      "Executes JavaScript code in the engine262 JavaScript engine and captures which ECMAScript specification sections are hit during execution. Returns the full marks array as JSON. Useful for understanding how specific JavaScript operations map to the ECMAScript spec.",
+      "Executes JavaScript code in the engine262 JavaScript engine and captures which ECMAScript specification sections are hit during execution. " +
+      "Returns the full marks array as JSON. Useful for understanding how specific JavaScript operations map to the ECMAScript spec. " +
+      "ask262Debug is available globally in the execution context (no import needed). " +
+      "Use ask262Debug.startImportant() and ask262Debug.stopImportant() to mark important sections. " +
+      "Example: ask262Debug.startImportant(); let x = 1 + 2; ask262Debug.stopImportant();",
     schema: evaluateSchema,
     func: async ({ code }) => {
       try {

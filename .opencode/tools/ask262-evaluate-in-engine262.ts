@@ -11,7 +11,9 @@ export default tool({
     "Executes JavaScript code in the engine262 JavaScript engine and captures which ECMAScript specification sections are hit during execution. " +
     "Returns JSON with importantSections and otherSections arrays. " +
     "Use this to understand how specific JavaScript operations map to the ECMAScript spec. " +
-    "You can use ask262Debug.startImportant() and ask262Debug.stopImportant() in the code to mark important sections.",
+    "ask262Debug is available globally in the execution context (no import needed). " +
+    "Use ask262Debug.startImportant() and ask262Debug.stopImportant() to mark important sections. " +
+    "Example: ask262Debug.startImportant(); let x = 1 + 2; ask262Debug.stopImportant();",
   args: {
     code: tool.schema
       .string()
