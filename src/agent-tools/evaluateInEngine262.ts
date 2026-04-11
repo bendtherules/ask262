@@ -12,13 +12,14 @@ import { z } from "zod";
  */
 export const toolMetadata = {
   description:
-    "Executes JavaScript code in the engine262 JavaScript engine and captures which ECMAScript specification sections are hit during execution. " +
-    "Returns the full marks array as JSON. Useful for understanding how specific JavaScript operations map to the ECMAScript spec. " +
-    "ask262Debug is available globally in the execution context (no import needed). " +
+    "Executes pure ECMAScript JavaScript code in the engine262 JavaScript engine and captures which ECMAScript specification sections are hit during execution. " +
+    "Returns JSON with importantSections, otherSections, and consoleOutput arrays. Useful for understanding how specific JavaScript operations map to the ECMAScript spec. " +
+    "Code must be pure ECMAScript with no DOM, browser, or Node.js APIs (no fs, document, window, etc.). " +
+    "console object with log/warn/debug/error methods and ask262Debug are available globally (no import needed). " +
     "Use ask262Debug.startImportant() and ask262Debug.stopImportant() to mark important sections. " +
-    "Example: ask262Debug.startImportant(); let x = 1 + 2; ask262Debug.stopImportant();",
+    "Example: console.log('test'); ask262Debug.startImportant(); let x = 1 + 2; ask262Debug.stopImportant();",
   args: {
-    code: "JavaScript code to execute in engine262 (e.g., '[1,2,3].map(x => x * 2)')",
+    code: "JavaScript code to execute in engine262 (e.g., 'console.log([1,2,3].map(x => x * 2))')",
   },
 };
 
@@ -32,6 +33,12 @@ interface MarkData {
   readonly fileRelativePath: string;
   readonly lineNumber: number;
   readonly important: boolean;
+}
+
+// Console log entry type
+interface ConsoleEntry {
+  method: string;
+  values: unknown[];
 }
 
 // biome-ignore lint/suspicious/noExplicitAny: engine262 is an external module without TypeScript types
@@ -80,12 +87,15 @@ export function createEvaluateInEngine262Tool() {
         // Reset marks from previous runs
         ask262Debug.marks = [];
 
+        // Array to capture console output
+        const consoleOutput: ConsoleEntry[] = [];
+
         // Set up agent and realm
         const agent = new Agent();
         setSurroundingAgent(agent);
         const realm = new ManagedRealm();
 
-        // Expose ask262Debug controls to the evaluated code
+        // Expose ask262Debug and console to the evaluated code
         realm.scope(() => {
           const debugObj = OrdinaryObjectCreate(
             agent.intrinsic("%Object.prototype%"),
@@ -127,6 +137,51 @@ export function createEvaluateInEngine262Tool() {
           skipDebugger(
             CreateDataProperty(debugObj, Value("stopImportant"), stopImportant),
           );
+
+          // Create console object with methods (excluding 'clear')
+          const consoleObj = OrdinaryObjectCreate(
+            agent.intrinsic("%Object.prototype%"),
+          );
+          skipDebugger(
+            CreateDataProperty(
+              realm.GlobalObject,
+              Value("console"),
+              consoleObj,
+            ),
+          );
+
+          // Add console methods: log, warn, debug, error
+          const consoleMethods = ["log", "warn", "debug", "error"];
+          for (const method of consoleMethods) {
+            const fn = CreateBuiltinFunction(
+              (args: unknown[]) => {
+                // Convert engine262 values to JavaScript values for the output
+                const jsValues = args.map((arg) => {
+                  // Handle engine262 Value types - convert to primitive JS values
+                  if (arg && typeof arg === "object") {
+                    // Try to get string value if it's a JSStringValue
+                    const strVal = (arg as { stringValue?: () => string })
+                      .stringValue;
+                    if (typeof strVal === "function") {
+                      return strVal.call(arg);
+                    }
+                    // Try other common properties
+                    const value = (arg as { value?: unknown }).value;
+                    if (value !== undefined) {
+                      return value;
+                    }
+                  }
+                  return arg;
+                });
+                consoleOutput.push({ method, values: jsValues });
+                return Value.undefined;
+              },
+              1,
+              Value(method),
+              [],
+            );
+            skipDebugger(CreateDataProperty(consoleObj, Value(method), fn));
+          }
         });
 
         // Start tracing
@@ -149,13 +204,17 @@ export function createEvaluateInEngine262Tool() {
         const result = {
           importantSections: importantMarks.map((m) => m.sectionIds),
           otherSections: otherMarks.map((m) => m.sectionIds),
+          consoleOutput: consoleOutput,
         };
 
         // Return compressed JSON
         return JSON.stringify(result);
       } catch (error) {
         console.error(`[Tool: ask262_evaluate_in_engine262] Error: ${error}`);
-        return `Error executing code in engine262: ${error instanceof Error ? error.message : String(error)}`;
+        const errorResult = {
+          error: error instanceof Error ? error.message : String(error),
+        };
+        return JSON.stringify(errorResult);
       }
     },
   });
