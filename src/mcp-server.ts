@@ -196,7 +196,7 @@ export async function main() {
     "ask",
     {
       description:
-        "How to orchestrate ask262 tools to explore JavaScript internals",
+        "Explains JavaScript internals from the ECMAScript specification.",
       argsSchema: {
         question: z.string().describe("Question"),
       },
