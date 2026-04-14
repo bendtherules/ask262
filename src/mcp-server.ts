@@ -1,9 +1,12 @@
 #!/usr/bin/env bun
+
 /**
  * Ask262 MCP Server
  * Provides MCP-compatible tools for exploring the ECMAScript specification.
  */
 
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import * as lancedbSdk from "@lancedb/lancedb";
 import { OllamaEmbeddings } from "@langchain/ollama";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
@@ -31,7 +34,15 @@ import {
   sectionContentToolMetadata,
   sectionContentToolName,
 } from "./agent-tools/index.js";
-import { EMBEDDING_MODEL, STORAGE_DIR } from "./constants.js";
+import {
+  EMBEDDING_MODEL,
+  STORAGE_DIR as STORAGE_DIR_REL,
+} from "./constants.js";
+
+// Resolve storage path relative to this script's directory
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const STORAGE_DIR = path.resolve(__dirname, "..", STORAGE_DIR_REL);
 
 // #region MCP Types
 
