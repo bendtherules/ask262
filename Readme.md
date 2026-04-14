@@ -24,7 +24,7 @@ bun install -g ask262
 bunx ask262
 
 # Or clone and install
-git clone <repository-url>
+git clone https://github.com/bendtherules/ask262
 cd ask262
 bun install
 ```
