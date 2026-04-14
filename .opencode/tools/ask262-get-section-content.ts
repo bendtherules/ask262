@@ -3,8 +3,8 @@
  * Retrieves full content from a specific ECMAScript spec section.
  */
 
-import { tool } from "@opencode-ai/plugin";
 import * as lancedbSdk from "@lancedb/lancedb";
+import { tool } from "@opencode-ai/plugin";
 import {
   createGetSectionContentTool,
   toolMetadata,

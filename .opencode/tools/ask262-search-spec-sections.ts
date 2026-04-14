@@ -3,9 +3,9 @@
  * Searches the ECMAScript specification for relevant sections.
  */
 
-import { tool } from "@opencode-ai/plugin";
 import * as lancedbSdk from "@lancedb/lancedb";
 import { OllamaEmbeddings } from "@langchain/ollama";
+import { tool } from "@opencode-ai/plugin";
 import {
   createSearchSpecSectionsTool,
   toolMetadata,
