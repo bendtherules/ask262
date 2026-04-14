@@ -229,7 +229,7 @@ I'll use one of these orchestration patterns:
 PATTERN 1 - For "What happens when I run this code?" questions:
    - Use ask262Debug.startImportant() and ask262Debug.stopImportant() in the code to mark only important sections.
    - STEP 1: ask262_evaluate_in_engine262(code: markedCode)
-   - STEP 2: ask262_get_section_content(sectionId: importantSections[0])
+   - STEP 2: ask262_get_section_content(sectionId: importantSections[0], recursive: true)
    - Explain which spec sections were hit and why
 
 PATTERN 2 - For "How does X work?" questions (e.g., "${question}"):
