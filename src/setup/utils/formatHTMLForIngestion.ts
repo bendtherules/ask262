@@ -154,6 +154,7 @@ function getListItemPrefix(
 
 function listToMarkdown(
   $: cheerio.CheerioAPI,
+  // biome-ignore lint/suspicious/noExplicitAny: cheerio element type complexity
   elem: any,
   depth: number = 0,
 ): string {

@@ -33,6 +33,7 @@ function addInternalMethodIds($: CheerioAPI): void {
   $(
     "#table-essential-internal-methods tr > td:first-child, " +
       "#table-additional-essential-internal-methods-of-function-objects tr > td:first-child",
+    // biome-ignore lint/suspicious/noExplicitAny: cheerio element type
   ).each((_, td: any) => {
     const $td = $(td);
     const $var = $td.find("var.field").first();
