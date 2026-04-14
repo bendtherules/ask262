@@ -153,7 +153,7 @@ async function main() {
       outputSchema: evaluateOutputSchema,
       annotations: {
         readOnlyHint: true,
-        idempotentHint: false,
+        idempotentHint: true,
         openWorldHint: false,
       },
     },
