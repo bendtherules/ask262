@@ -2,8 +2,12 @@
  * Evaluate JavaScript code in engine262 and capture spec section marks.
  * Executes code in the engine262 JavaScript engine and returns the captured
  * ECMAScript spec section marks.
+ * Uses child_process for true isolation and guaranteed termination via SIGKILL.
  */
 
+import { spawn } from "node:child_process";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { z } from "zod";
 
 // #region Zod schemas (not exported)
@@ -106,180 +110,139 @@ export type EvaluateToolInput = z.infer<typeof inputSchema>;
  */
 export const toolName = "ask262_evaluate_in_engine262";
 
-// Type definitions for engine262 module
-interface MarkData {
-  readonly sectionIds: string[];
-  readonly fileRelativePath: string;
-  readonly lineNumber: number;
-  readonly important: boolean;
-}
-
-// biome-ignore lint/suspicious/noExplicitAny: engine262 is an external module without TypeScript types
-let engine262Module: any = null;
+/**
+ * Default timeout for code execution
+ */
+const DEFAULT_EXECUTION_TIMEOUT_MS = 1000;
 
 /**
- * Lazy load engine262 module
+ * Execute JavaScript code in engine262 using a child process.
+ * @param code - JavaScript code to execute
+ * @param timeoutMs - Maximum execution time in milliseconds
+ * @returns Execution result as JSON string
  */
-async function loadEngine262() {
-  if (!engine262Module) {
-    // Dynamic import of engine262 from local path
-    engine262Module = await import("../../engine262/lib/engine262.mjs");
-  }
-  return engine262Module;
+function executeInChildProcess(
+  code: string,
+  timeoutMs: number,
+): Promise<string> {
+  return new Promise((resolve) => {
+    // Get the runner script path
+    const runnerPath = path.join(
+      path.dirname(fileURLToPath(import.meta.url)),
+      "evaluateInEngine262.runner.mjs",
+    );
+
+    // Spawn child process
+    const child = spawn("node", [runnerPath], {
+      stdio: ["pipe", "pipe", "pipe"],
+      killSignal: "SIGKILL", // Force kill, can't be blocked
+    });
+
+    let stdout = "";
+    let stderr = "";
+
+    // Collect stdout
+    child.stdout?.on("data", (data: Buffer) => {
+      stdout += data.toString();
+    });
+
+    // Collect stderr (for errors)
+    child.stderr?.on("data", (data: Buffer) => {
+      stderr += data.toString();
+    });
+
+    // Set up timeout
+    let killedByTimeout = false;
+    const timeoutId = setTimeout(() => {
+      killedByTimeout = true;
+      // SIGKILL can't be caught or blocked - guaranteed termination
+      child.kill("SIGKILL");
+    }, timeoutMs);
+
+    // Handle process exit
+    child.on("close", (code, signal) => {
+      // Clear timeout
+      clearTimeout(timeoutId);
+
+      if (signal === "SIGKILL" || signal === "SIGTERM") {
+        // Process was killed (timeout or error)
+        if (killedByTimeout) {
+          resolve(
+            JSON.stringify({
+              error: `Execution timeout after ${timeoutMs}ms`,
+            }),
+          );
+        } else {
+          resolve(
+            JSON.stringify({
+              error: stderr || "Process terminated",
+            }),
+          );
+        }
+        return;
+      }
+
+      if (code !== 0) {
+        resolve(
+          JSON.stringify({
+            error: stderr || `Process exited with code ${code}`,
+          }),
+        );
+        return;
+      }
+
+      // Success - return stdout (should be JSON result)
+      try {
+        // Validate it's valid JSON
+        JSON.parse(stdout);
+        resolve(stdout);
+      } catch {
+        resolve(
+          JSON.stringify({
+            error: `Invalid output: ${stdout.slice(0, 200)}`,
+          }),
+        );
+      }
+    });
+
+    // Handle spawn errors
+    child.on("error", (error) => {
+      clearTimeout(timeoutId);
+      resolve(
+        JSON.stringify({
+          error: `Failed to spawn process: ${error.message}`,
+        }),
+      );
+    });
+
+    // Send code to child via stdin
+    child.stdin?.write(code);
+    child.stdin?.end();
+  });
 }
 
 /**
  * Creates the evaluateInEngine262 tool function.
- * Executes JavaScript code in engine262 and captures spec section marks.
+ * Executes JavaScript code in engine262 using a child process with timeout support.
+ * Uses child_process for true isolation and guaranteed termination via SIGKILL.
+ * @param timeoutMs - Maximum execution time in milliseconds
  * @returns Function that executes code and returns structured output
  */
-export function createEvaluateInEngine262Tool() {
+export function createEvaluateInEngine262Tool(
+  timeoutMs = DEFAULT_EXECUTION_TIMEOUT_MS,
+) {
   return async ({ code }: EvaluateToolInput): Promise<EvaluateToolOutput> => {
-    const engine = await loadEngine262();
-    const ask262Debug = engine.ask262Debug as {
-      marks: MarkData[];
-      startTrace: () => void;
-      stopTrace: () => void;
-      startImportant: () => void;
-      stopImportant: () => void;
-      reset: () => void;
-    };
-    const Agent = engine.Agent;
-    const ManagedRealm = engine.ManagedRealm;
-    const setSurroundingAgent = engine.setSurroundingAgent;
-    const OrdinaryObjectCreate = engine.OrdinaryObjectCreate;
-    const CreateBuiltinFunction = engine.CreateBuiltinFunction;
-    const CreateDataProperty = engine.CreateDataProperty;
-    const Value = engine.Value;
-    const skipDebugger = engine.skipDebugger;
+    try {
+      // Execute code in isolated child process
+      const resultJson = await executeInChildProcess(code, timeoutMs);
 
-    // Reset state from previous runs
-    ask262Debug.reset();
-
-    // Array to capture console output
-    const consoleOutput: ConsoleEntry[] = [];
-
-    // Set up agent and realm
-    const agent = new Agent();
-    setSurroundingAgent(agent);
-    const realm = new ManagedRealm();
-
-    // Expose ask262Debug and console to the evaluated code
-    realm.scope(() => {
-      const debugObj = OrdinaryObjectCreate(
-        agent.intrinsic("%Object.prototype%"),
-      );
-      skipDebugger(
-        CreateDataProperty(realm.GlobalObject, Value("ask262Debug"), debugObj),
-      );
-
-      const startImportant = CreateBuiltinFunction(
-        () => {
-          ask262Debug.startImportant();
-          // biome-ignore lint/suspicious/noExplicitAny: engine262 uses custom value types
-          return (Value as any)("undefined");
-        },
-        0,
-        Value("startImportant"),
-        [],
-      );
-      skipDebugger(
-        CreateDataProperty(debugObj, Value("startImportant"), startImportant),
-      );
-
-      const stopImportant = CreateBuiltinFunction(
-        () => {
-          ask262Debug.stopImportant();
-          // biome-ignore lint/suspicious/noExplicitAny: engine262 uses custom value types
-          return (Value as any)("undefined");
-        },
-        0,
-        Value("stopImportant"),
-        [],
-      );
-      skipDebugger(
-        CreateDataProperty(debugObj, Value("stopImportant"), stopImportant),
-      );
-
-      // Create console object with methods (excluding 'clear')
-      const consoleObj = OrdinaryObjectCreate(
-        agent.intrinsic("%Object.prototype%"),
-      );
-      skipDebugger(
-        CreateDataProperty(realm.GlobalObject, Value("console"), consoleObj),
-      );
-
-      // Add console methods: log, warn, debug, error
-      const consoleMethods = ["log", "warn", "debug", "error"];
-      for (const method of consoleMethods) {
-        const fn = CreateBuiltinFunction(
-          (args: unknown[]) => {
-            // Convert engine262 values to JavaScript values for the output
-            const jsValues = args.map((arg) => {
-              // Handle engine262 Value types - convert to primitive JS values
-              if (arg && typeof arg === "object") {
-                // Try to get string value if it's a JSStringValue
-                const strVal = (arg as { stringValue?: () => string })
-                  .stringValue;
-                if (typeof strVal === "function") {
-                  return strVal.call(arg);
-                }
-                // Try other common properties
-                const value = (arg as { value?: unknown }).value;
-                if (value !== undefined) {
-                  return value;
-                }
-              }
-              return arg;
-            });
-            consoleOutput.push({ method, values: jsValues });
-            // biome-ignore lint/suspicious/noExplicitAny: engine262 uses custom value types
-            return (Value as any)("undefined");
-          },
-          1,
-          Value(method),
-          [],
-        );
-        skipDebugger(CreateDataProperty(consoleObj, Value(method), fn));
-      }
-    });
-
-    // Start tracing
-    ask262Debug.startTrace();
-
-    // Execute the code
-    const completion = realm.evaluateScript(code);
-
-    // Stop tracing
-    ask262Debug.stopTrace();
-
-    // Check for error completion (engine262 returns ThrowCompletion_ instead of throwing)
-    // biome-ignore lint/suspicious/noExplicitAny: engine262 internal completion types
-    const completionAny = completion as any;
-    if (completionAny?.Type === "throw") {
-      const errorValue = completionAny.Value;
-      // Extract error message from ErrorData property
-      const errorMessage: string =
-        errorValue?.ErrorData?.stringValue?.() ||
-        errorValue?.ErrorData?.value ||
-        "Unknown error";
+      // Parse the result
+      return JSON.parse(resultJson) as EvaluateToolOutput;
+    } catch (error) {
+      // Return error result
       return {
-        error: errorMessage,
+        error: error instanceof Error ? error.message : String(error),
       };
     }
-
-    // Get captured marks
-    const marks = ask262Debug.marks;
-
-    // Filter and group marks by important flag
-    const importantMarks = marks.filter((m) => m.important);
-    const otherMarks = marks.filter((m) => !m.important);
-
-    // Flatten sectionIds from all marks
-    return {
-      importantSections: importantMarks.flatMap((m) => m.sectionIds),
-      otherSections: otherMarks.flatMap((m) => m.sectionIds),
-      consoleOutput: consoleOutput,
-    };
   };
 }

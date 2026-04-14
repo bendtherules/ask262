@@ -7,12 +7,7 @@
  * Usage: bun run src/test/manual/test-evaluate-in-engine262.ts ["your JavaScript code"]
  */
 
-import { createEvaluateInEngine262Tool } from "../../agent-tools";
-
-interface EvaluateResult {
-  importantSections: string[][];
-  otherSections: string[][];
-}
+import { createEvaluateInEngine262Tool } from "../../agent-tools/index.js";
 
 async function main() {
   // Get test code from command line or use default
@@ -39,13 +34,15 @@ async function main() {
 
   console.log("Executing tool...\n");
   try {
-    const result = await evaluateTool.func({ code: testCode });
+    const result = await evaluateTool({ code: testCode });
 
-    // Parse and verify results
-    const parsed: EvaluateResult = JSON.parse(result);
+    // Verify results
+    if ("error" in result) {
+      throw new Error(result.error);
+    }
 
-    const importantCount = parsed.importantSections.length;
-    const otherCount = parsed.otherSections.length;
+    const importantCount = result.importantSections.length;
+    const otherCount = result.otherSections.length;
     const totalCount = importantCount + otherCount;
 
     console.log(`\n✓ Captured ${totalCount} marks`);
@@ -53,9 +50,9 @@ async function main() {
     console.log("");
 
     // Flatten and dedupe section IDs
-    const importantIds = new Set(parsed.importantSections.flat());
+    const importantIds = new Set(result.importantSections);
     const otherIds = new Set(
-      parsed.otherSections.flat().filter((id) => !importantIds.has(id)),
+      result.otherSections.filter((id: string) => !importantIds.has(id)),
     );
 
     const totalUnique = importantIds.size + otherIds.size;
