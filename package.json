@@ -9,7 +9,7 @@
   "type": "module",
   "main": "src/mcp-server.ts",
   "bin": {
-    "ask262": "bun run src/mcp-server.ts"
+    "ask262": "src/mcp-server.ts"
   },
   "scripts": {
     "type-check": "tsc --noEmit",

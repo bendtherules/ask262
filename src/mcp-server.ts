@@ -1,3 +1,4 @@
+#!/usr/bin/env bun
 /**
  * Ask262 MCP Server
  * Provides MCP-compatible tools for exploring the ECMAScript specification.
@@ -81,7 +82,7 @@ const embeddings = new OllamaEmbeddings({
   baseUrl: process.env.OLLAMA_HOST,
 });
 
-async function main() {
+export async function main() {
   // Connect to LanceDB
   const db = await lancedbSdk.connect(STORAGE_DIR);
   const table = await db.openTable("spec_vectors");
