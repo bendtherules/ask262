@@ -21,7 +21,7 @@ import type { Table } from "@lancedb/lancedb";
 import * as lancedbSdk from "@lancedb/lancedb";
 import { OllamaEmbeddings } from "@langchain/ollama";
 import { Command } from "commander";
-import { EMBEDDING_MODEL, STORAGE_DIR } from "../../constants";
+import { EMBEDDING_MODEL, STORAGE_DIR } from "../../constants.js";
 
 const embeddings = new OllamaEmbeddings({
   model: EMBEDDING_MODEL,

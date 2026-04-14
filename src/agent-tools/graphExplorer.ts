@@ -42,7 +42,7 @@ export function createGraphExplorerTool(graph: Graph) {
         if (nodeAttr.file) result += `- File: ${nodeAttr.file}\n`;
         result += `\nConnected parts:\n`;
 
-        neighbors.forEach((neighbor) => {
+        neighbors.forEach((neighbor: string) => {
           const attr = graph.getNodeAttributes(neighbor);
           const edges = graph.edges(nodeId, neighbor);
           const edgeAttr = graph.getEdgeAttributes(edges[0]);

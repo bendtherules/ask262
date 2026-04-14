@@ -11,13 +11,13 @@ import {
   createGetSectionContentTool,
   createGraphExplorerTool,
   createSearchSpecSectionsTool,
-} from "./agent-tools";
+} from "./agent-tools/index.js";
 import {
   CONFIG_FILE,
   EMBEDDING_MODEL,
   GRAPH_FILE,
   STORAGE_DIR,
-} from "./constants";
+} from "./constants.js";
 
 const embeddings = new OllamaEmbeddings({
   model: EMBEDDING_MODEL,

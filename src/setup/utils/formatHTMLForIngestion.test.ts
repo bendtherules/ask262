@@ -9,7 +9,7 @@ import {
   convertTablesToMarkdown,
   DEFAULT_CONFIG,
   formatForIngestion,
-} from "./formatHTMLForIngestion";
+} from "./formatHTMLForIngestion.js";
 
 describe("formatHTMLForIngestion", () => {
   describe("convertLinksToMarkdown", () => {

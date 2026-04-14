@@ -3,7 +3,7 @@
  * Uses Ollama's reranker API to score documents against a query.
  */
 
-import { RERANKER_MODEL } from "../constants";
+import { RERANKER_MODEL } from "../constants.js";
 
 const OLLAMA_HOST = process.env.OLLAMA_HOST || "http://localhost:11434";
 

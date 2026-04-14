@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { Document } from "@langchain/core/documents";
-import { HTMLTextSplitter } from "./index";
+import { HTMLTextSplitter } from "./index.js";
 
 describe("HTMLTextSplitter", () => {
   test("keeps small HTML in a single chunk", async () => {

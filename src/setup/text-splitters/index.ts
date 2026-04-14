@@ -1,1 +1,1 @@
-export * from "./HtmlTextSplitter";
+export * from "./HtmlTextSplitter.js";

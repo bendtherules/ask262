@@ -13,8 +13,8 @@
 
 import * as lancedbSdk from "@lancedb/lancedb";
 import { OllamaEmbeddings } from "@langchain/ollama";
-import { createSearchSpecSectionsTool } from "../../agent-tools";
-import { EMBEDDING_MODEL, STORAGE_DIR } from "../../constants";
+import { createSearchSpecSectionsTool } from "../../agent-tools/index.js";
+import { EMBEDDING_MODEL, STORAGE_DIR } from "../../constants.js";
 
 async function main() {
   // Get query from command line or use default
@@ -43,7 +43,7 @@ async function main() {
     console.log("✓ Tool created\n");
 
     console.log("Executing tool...\n");
-    const result = await searchSpecSectionsTool.func({ query });
+    const result = await searchSpecSectionsTool({ query });
 
     console.log("=== TOOL OUTPUT ===");
     console.log(result);

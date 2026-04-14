@@ -8,9 +8,9 @@ import { OllamaEmbeddings } from "@langchain/ollama";
 import * as cheerio from "cheerio";
 import { glob } from "glob";
 import ora from "ora";
-import { EMBEDDING_MODEL, SPEC_DIR, STORAGE_DIR } from "../constants";
-import { HTMLTextSplitter } from "./text-splitters";
-import { formatForIngestion } from "./utils/formatHTMLForIngestion";
+import { EMBEDDING_MODEL, SPEC_DIR, STORAGE_DIR } from "../constants.js";
+import { HTMLTextSplitter } from "./text-splitters/index.js";
+import { formatForIngestion } from "./utils/formatHTMLForIngestion.js";
 
 const embeddings = new OllamaEmbeddings({
   model: EMBEDDING_MODEL,
