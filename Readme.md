@@ -33,18 +33,6 @@ cd ask262
 bun install
 ```
 
-## Setup
-
-1. **Ensure spec is present** (only external requirement):
-   - `./spec-built/multipage/` - ECMAScript spec HTML files
-   
-   *Note: `storage/` (pre-built vectors), `engine262/lib/`, and `graphology/` are included in the package.*
-
-2. **Build knowledge graph** (first time only, if using custom spec):
-   ```bash
-   bun run build
-   ```
-
 ## MCP Configuration
 
 Add to your MCP client configuration using `bunx` (no installation required):
@@ -93,6 +81,25 @@ bun run test-evaluate-timeout
 # Test search functionality
 bun run test-search-spec-sections
 ```
+
+## Development
+
+For development or using a custom ECMAScript specification:
+
+1. **Clone and setup**:
+   ```bash
+   git clone https://github.com/bendtherules/ask262
+   cd ask262
+   bun install
+   ```
+
+2. **Ensure spec is present**:
+   - `./spec-built/multipage/` - ECMAScript spec HTML files
+
+3. **Build knowledge graph** (if using custom spec):
+   ```bash
+   bun run build
+   ```
 
 ## License
 
