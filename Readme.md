@@ -43,15 +43,15 @@ bun install
 
 ## MCP Configuration
 
-Add to your MCP client configuration:
+Add to your MCP client configuration using `bunx` (no installation required):
 
 **Claude Desktop** (`claude_desktop_config.json`):
 ```json
 {
   "mcpServers": {
     "ask262": {
-      "command": "bun",
-      "args": ["run", "/path/to/ask262/src/mcp-server.ts"]
+      "command": "bunx",
+      "args": ["ask262"]
     }
   }
 }
@@ -61,29 +61,6 @@ Add to your MCP client configuration:
 ```json
 {
   "servers": {
-    "ask262": {
-      "command": "bun",
-      "args": ["run", "src/mcp-server.ts"]
-    }
-  }
-}
-```
-
-**Via global install** (after `bun install -g ask262`):
-```json
-{
-  "mcpServers": {
-    "ask262": {
-      "command": "ask262"
-    }
-  }
-}
-```
-
-**Via bunx** (no installation required):
-```json
-{
-  "mcpServers": {
     "ask262": {
       "command": "bunx",
       "args": ["ask262"]
