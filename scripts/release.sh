@@ -66,6 +66,13 @@ if [ -n "$BUMP_VERSION" ]; then
   echo "📦 Bumping $BUMP_VERSION version..."
   npm version $BUMP_VERSION --no-git-tag-version
   echo "✅ Version bumped"
+  
+  # Commit version bump
+  echo ""
+  echo "📝 Committing version bump..."
+  git add package.json
+  git commit -m "chore: bump version to $(grep -o '"version": "[^"]*"' package.json | cut -d'"' -f4)"
+  echo "✅ Version bump committed"
 fi
 
 echo ""
