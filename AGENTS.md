@@ -15,7 +15,6 @@ Users ask questions like: *"How does the if statement work?"* or *"Which functio
 
 - **Node.js** 18+ with Bun runtime (packageManager: bun@1.2.8)
 - **Ollama** installed locally with embedding model (e.g., `qwen3-embedding:0.6b`)
-- **OpenAI-compatible endpoint** (NVIDIA or other) configured in `config.json`
 
 ## Project Structure
 
@@ -44,7 +43,6 @@ ask262/
 │           ├── verify-db.ts              # Verify database contents
 │           ├── test-search-spec-sections.ts    # Test vector search tool
 │           └── test-evaluate-in-engine262.ts  # Test evaluate tool
-├── config.json               # API keys and endpoints (user-created)
 ├── spec-built/multipage/     # ECMAScript spec HTML files
 ├── engine262/src/            # JavaScript engine implementation
 ├── storage/                  # Vector index persistence (LanceDB)
@@ -171,7 +169,7 @@ Before running the MCP server:
 
 ### Error Handling
 - Use `try/catch` for async operations with meaningful error messages
-- Validate environment variables (e.g., `NVIDIA_API_KEY` in config.json)
+- Validate environment variables
 - Check file existence before reading
 - Log warnings for missing configuration rather than failing silently
 
@@ -189,5 +187,4 @@ Before running the MCP server:
 1. Always use TypeScript for implementation - no plain JavaScript
 2. Run type-check before committing: `bun run type-check`
 3. Ingest and build commands can take significant time due to local embedding generation
-4. The agent relies on `config.json` for API credentials (not committed to git)
-5. External directories (`spec-built/`, `engine262/`, `graphology/`) should not be modified by linting/formatting
+4. External directories (`spec-built/`, `engine262/`, `graphology/`) should not be modified by linting/formatting

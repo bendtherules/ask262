@@ -31,18 +31,12 @@ bun install
 
 ## Setup
 
-1. **Prepare environment**:
-   ```bash
-   export OPENAI_API_BASE="your_endpoint_base_url"  # Optional
-   export OPENAI_API_KEY="your_api_key"             # Optional
-   ```
-
-2. **Ensure spec is present** (only external requirement):
+1. **Ensure spec is present** (only external requirement):
    - `./spec-built/multipage/` - ECMAScript spec HTML files
    
    *Note: `storage/` (pre-built vectors), `engine262/lib/`, and `graphology/` are included in the package.*
 
-3. **Build knowledge graph** (first time only, if using custom spec):
+2. **Build knowledge graph** (first time only, if using custom spec):
    ```bash
    bun run build
    ```
