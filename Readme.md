@@ -49,13 +49,15 @@ Add to your MCP client configuration using `bunx` (no installation required):
 }
 ```
 
-**OpenCode** (`.opencode/mcp.json`):
+**OpenCode** (global config `~/.config/opencode/opencode.json` or project config `opencode.json`):
 ```json
 {
-  "servers": {
+  "$schema": "https://opencode.ai/config.json",
+  "mcp": {
     "ask262": {
-      "command": "bunx",
-      "args": ["ask262"]
+      "type": "local",
+      "command": ["bunx", "ask262"],
+      "enabled": true
     }
   }
 }
