@@ -113,6 +113,17 @@ class Ask262Debug {
   stopImportant() {
     this._important = false;
   }
+
+  /**
+   * Resets all captured marks and internal state.
+   * Clears marks array, mark index map, and resets flags.
+   */
+  reset() {
+    this.marks = [];
+    this._markIndex.clear();
+    this._important = false;
+    this._captureEnabled = false;
+  }
 }
 
 export const ask262Debug = new Ask262Debug();

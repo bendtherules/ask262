@@ -142,6 +142,7 @@ export function createEvaluateInEngine262Tool() {
       stopTrace: () => void;
       startImportant: () => void;
       stopImportant: () => void;
+      reset: () => void;
     };
     const Agent = engine.Agent;
     const ManagedRealm = engine.ManagedRealm;
@@ -152,9 +153,8 @@ export function createEvaluateInEngine262Tool() {
     const Value = engine.Value;
     const skipDebugger = engine.skipDebugger;
 
-    // TODO: Add reset method, allow making instances and use that.
-    // Reset marks from previous runs
-    ask262Debug.marks = [];
+    // Reset state from previous runs
+    ask262Debug.reset();
 
     // Array to capture console output
     const consoleOutput: ConsoleEntry[] = [];
