@@ -9,7 +9,7 @@ const SPEC_DIR = "./spec-built/multipage";
 // Directory containing the JavaScript engine implementation source code
 const CODE_DIR = "./engine262/src";
 
-import { GRAPH_FILE } from "../constants";
+import { GRAPH_FILE } from "../constants.js";
 
 /**
  * Builds a knowledge graph mapping ECMAScript specification sections
@@ -21,6 +21,7 @@ import { GRAPH_FILE } from "../constants";
  */
 async function buildGraph() {
   // Initialize a multi-graph (allows multiple edges between same nodes)
+  // @ts-ignore - graphology constructor type issue
   const graph = new Graph({
     multi: true,
     type: "directed",
