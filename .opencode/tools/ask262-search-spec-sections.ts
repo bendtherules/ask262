@@ -9,7 +9,7 @@ import { tool } from "@opencode-ai/plugin";
 import {
   createSearchSpecSectionsTool,
   toolMetadata,
-} from "../../src/agent-tools/searchSpecSections";
+} from "../../src/agent-tools/searchSpecSections.js";
 
 export default tool({
   description: toolMetadata.description,
@@ -32,8 +32,8 @@ export default tool({
 
     // Create and execute tool
     const searchTool = createSearchSpecSectionsTool(table, embeddings);
-    const result = await searchTool.func({ query });
+    const result = await searchTool({ query });
 
-    return result;
+    return JSON.stringify(result, null, 2);
   },
 });

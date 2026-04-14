@@ -7,7 +7,7 @@ import { tool } from "@opencode-ai/plugin";
 import {
   createEvaluateInEngine262Tool,
   toolMetadata,
-} from "../../src/agent-tools/evaluateInEngine262";
+} from "../../src/agent-tools/evaluateInEngine262.js";
 
 export default tool({
   description: toolMetadata.description,
@@ -19,8 +19,8 @@ export default tool({
 
     // Create and execute tool (no external dependencies needed)
     const evaluateTool = createEvaluateInEngine262Tool();
-    const result = await evaluateTool.func({ code });
+    const result = await evaluateTool({ code });
 
-    return result;
+    return JSON.stringify(result, null, 2);
   },
 });

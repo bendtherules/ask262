@@ -8,7 +8,7 @@ import { tool } from "@opencode-ai/plugin";
 import {
   createGetSectionContentTool,
   toolMetadata,
-} from "../../src/agent-tools/getSectionContent";
+} from "../../src/agent-tools/getSectionContent.js";
 
 export default tool({
   description: toolMetadata.description,
@@ -30,8 +30,8 @@ export default tool({
 
     // Create and execute tool
     const contentTool = createGetSectionContentTool(table);
-    const result = await contentTool.func({ sectionId, recursive });
+    const result = await contentTool({ sectionId, recursive });
 
-    return result;
+    return JSON.stringify(result, null, 2);
   },
 });
