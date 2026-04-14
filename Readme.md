@@ -101,6 +101,18 @@ For development or using a custom ECMAScript specification:
    bun run build
    ```
 
+4. **Release to npm** (maintainers only):
+   ```bash
+   bun run release
+   ```
+   This will:
+   - Check for uncommitted git changes
+   - Bump patch version (e.g., 0.0.1 → 0.0.2)
+   - Fix any hard links in `storage/`
+   - Run checks and release
+
+   Other options: `bun run release -- --minor`, `bun run release -- --major`, or `bun run release -- --no-bump`
+
 ## License
 
 ISC

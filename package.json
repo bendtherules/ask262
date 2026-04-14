@@ -25,7 +25,7 @@
     "test-mcp-server": "bun run src/test/manual/test-mcp-server.ts",
     "test": "bun test",
     "prepublish": "npm run type-check && npm run lint && npm pack --dry-run",
-    "publish": "npm publish --access=public"
+    "release": "bash scripts/release.sh --patch"
   },
   "keywords": [
     "mcp",
