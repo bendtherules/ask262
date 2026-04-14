@@ -23,10 +23,31 @@ const evaluateSuccessOutputSchema = z.object({
   consoleOutput: z
     .array(consoleEntrySchema)
     .describe("Console output captured during execution"),
+  error: z.undefined().optional(),
 });
 
 const evaluateErrorOutputSchema = z.object({
+  importantSections: z.undefined().optional(),
+  otherSections: z.undefined().optional(),
+  consoleOutput: z.undefined().optional(),
   error: z.string().describe("Error message when execution fails"),
+});
+
+// Combined output schema (single object with optional fields because MCP SDK doesn't accept union schemas)
+const evaluateOutputSchemaCombined = z.object({
+  importantSections: z
+    .array(z.string())
+    .optional()
+    .describe("Important spec sections hit during execution (absent on error)"),
+  otherSections: z
+    .array(z.string())
+    .optional()
+    .describe("Other spec sections hit during execution (absent on error)"),
+  consoleOutput: z
+    .array(consoleEntrySchema)
+    .optional()
+    .describe("Console output captured during execution (absent on error)"),
+  error: z.string().optional().describe("Error message when execution fails"),
 });
 
 // #endregion
@@ -57,12 +78,11 @@ export const inputSchema = z.object({
 });
 
 /**
- * Output schema for the evaluate tool (union of success and error outputs).
+ * Output schema for the evaluate tool.
+ * Uses a single object schema with optional fields for MCP SDK compatibility
+ * (MCP SDK doesn't support union schemas in outputSchema).
  */
-export const outputSchema = z.union([
-  evaluateSuccessOutputSchema,
-  evaluateErrorOutputSchema,
-]);
+export const outputSchema = evaluateOutputSchemaCombined;
 
 // #endregion
 
@@ -74,7 +94,8 @@ export type EvaluateSuccessOutput = z.infer<typeof evaluateSuccessOutputSchema>;
 
 export type EvaluateErrorOutput = z.infer<typeof evaluateErrorOutputSchema>;
 
-export type EvaluateToolOutput = z.infer<typeof outputSchema>;
+/** Combined tool output type (success or error) */
+export type EvaluateToolOutput = EvaluateSuccessOutput | EvaluateErrorOutput;
 
 export type EvaluateToolInput = z.infer<typeof inputSchema>;
 
@@ -226,17 +247,26 @@ export function createEvaluateInEngine262Tool() {
     // Start tracing
     ask262Debug.startTrace();
 
-    try {
-      // Execute the code - only this part can fail
-      realm.evaluateScript(code);
-    } catch (error) {
-      return {
-        error: error instanceof Error ? error.message : String(error),
-      };
-    }
+    // Execute the code
+    const completion = realm.evaluateScript(code);
 
     // Stop tracing
     ask262Debug.stopTrace();
+
+    // Check for error completion (engine262 returns ThrowCompletion_ instead of throwing)
+    // biome-ignore lint/suspicious/noExplicitAny: engine262 internal completion types
+    const completionAny = completion as any;
+    if (completionAny?.Type === "throw") {
+      const errorValue = completionAny.Value;
+      // Extract error message from ErrorData property
+      const errorMessage: string =
+        errorValue?.ErrorData?.stringValue?.() ||
+        errorValue?.ErrorData?.value ||
+        "Unknown error";
+      return {
+        error: errorMessage,
+      };
+    }
 
     // Get captured marks
     const marks = ask262Debug.marks;

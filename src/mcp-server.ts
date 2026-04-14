@@ -159,7 +159,7 @@ async function main() {
     },
     async ({ code }: EvaluateToolMCPInput): Promise<EvaluateToolMCPOutput> => {
       const result = await evaluateTool({ code });
-      const isError = "error" in result;
+      const isError = result.error !== undefined;
       const text = isError ? result.error : JSON.stringify(result, null, 2);
       return {
         content: [{ type: "text", text }],
