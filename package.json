@@ -42,8 +42,7 @@
   "files": [
     "src/",
     "storage/",
-    "engine262/lib/",
-    "graphology/",
+    "engine262/lib/engine262.mjs",
     "AGENTS.md",
     "README.md"
   ],
