@@ -104,10 +104,17 @@ export async function main() {
   const evaluateTool = createEvaluateInEngine262Tool();
 
   // Create MCP server
-  const server = new McpServer({
-    name: "ask262-server",
-    version: "1.0.0",
-  });
+  const server = new McpServer(
+    {
+      name: "ask262-server",
+      version: "1.0.0",
+    },
+    {
+      capabilities: {
+        prompts: {},
+      },
+    },
+  );
 
   // Register search spec tool
   server.registerTool(
@@ -181,6 +188,53 @@ export async function main() {
         isError,
       };
     },
+  );
+
+  // Register prompt for tool orchestration guidance
+  server.registerPrompt(
+    "ask262",
+    {
+      description:
+        "How to orchestrate ask262 tools to explore JavaScript internals",
+    },
+    async () => ({
+      description: "Ask262 orchestration guide",
+      messages: [
+        {
+          role: "assistant",
+          content: {
+            type: "text",
+            text: `Ask262 helps explain how Javascript works according to ECMAScript specification.
+
+Available tools:
+- ask262_search_spec_sections: Vector search to find relevant spec section ids
+- ask262_get_section_content: Retrieve full text from a spec section id  
+- ask262_evaluate_in_engine262: Execute pure JS and capture which spec section ids are hit. Has 1-second timeout for safety.
+
+Orchestration patterns:
+
+1. For "What happens when I run this code?" questions:
+   - Use ask262Debug.startImportant() and ask262Debug.stopImportant() in the code to mark important sections.
+   - STEP 1: ask262_evaluate_in_engine262(code: markedCode)
+   - STEP 2: ask262_get_section_content(sectionId: importantSections[0])
+   - Explain which spec sections were hit and why
+
+2. For "How does foo work?" questions:
+   - Flow A: Try to generate a specific code example and then follow Pattern 1 ("What happens when I run this code?")
+   - Flow B: If you can't generate a specific code example, do a broader search to find relevant sections and then fetch their content
+   - STEP B1: ask262_search_spec_sections(query: "foo")
+   - STEP B2: ask262_get_section_content(sectionId: foundSectionId, recursive: true)
+
+Always prefer Pattern 1. It provides exact spec sections.
+You can also ask user to provide code examples if you can't generate them. Use Pattern 2 as a fallback.
+
+- Ignore internal knowledge about Javascript and ECMAScript. Base all answers primarily on the spec sections you retrieve using the tools.
+- Reference specific spec sections by section id (sec-array.prototype.map) or number/name (e.g., "23.1.3.21 Array.prototype.map")
+`,
+          },
+        },
+      ],
+    }),
   );
 
   // Use stdio transport for communication

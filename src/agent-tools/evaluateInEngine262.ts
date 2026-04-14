@@ -63,8 +63,8 @@ const evaluateOutputSchemaCombined = z.object({
  */
 export const toolMetadata = {
   description:
-    "Executes pure ECMAScript JavaScript code in the engine262 JavaScript engine and captures which ECMAScript specification sections are hit during execution. " +
-    "Returns an object with importantSections, otherSections, and consoleOutput arrays. Useful for understanding how specific JavaScript operations map to the ECMAScript spec. " +
+    "Executes pure JavaScript code in the engine262 JavaScript engine and captures which ECMAScript specification sections are hit during execution. " +
+    "Returns an object with importantSections, otherSections, and consoleOutput arrays." +
     "Code must be pure ECMAScript with no DOM, browser, or Node.js APIs (no fs, document, window, etc.). " +
     "console object with log/warn/debug/error methods and ask262Debug are available globally (no import needed). " +
     "Use ask262Debug.startImportant() and ask262Debug.stopImportant() to mark important sections. " +
