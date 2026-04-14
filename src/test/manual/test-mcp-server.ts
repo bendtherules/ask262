@@ -71,7 +71,7 @@ async function testMCPServer() {
     const contentResult = (await client.callTool({
       name: "ask262_get_section_content",
       arguments: {
-        sectionId: "sec-array-prototype-map",
+        sectionId: "sec-array.prototype.map",
         recursive: false,
       },
     })) as GetSectionContentMCPOutput;
