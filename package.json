@@ -1,6 +1,6 @@
 {
   "name": "ask262",
-  "version": "1.0.0",
+  "version": "0.0.1",
   "description": "MCP server for exploring ECMAScript specification and engine262 JavaScript engine implementation",
   "packageManager": "bun@1.2.8",
   "engines": {
@@ -23,7 +23,9 @@
     "test-evaluate-timeout": "bun run src/test/manual/test-evaluate-timeout.ts",
     "test-search-spec-sections": "bun run src/test/manual/test-search-spec-sections.ts",
     "test-mcp-server": "bun run src/test/manual/test-mcp-server.ts",
-    "test": "bun test"
+    "test": "bun test",
+    "prepublish": "npm run type-check && npm run lint && npm pack --dry-run",
+    "publish": "npm publish --access=public"
   },
   "keywords": [
     "mcp",
