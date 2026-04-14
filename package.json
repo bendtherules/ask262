@@ -1,8 +1,16 @@
 {
   "name": "ask262",
-  "packageManager": "bun@1.2.8",
   "version": "1.0.0",
-  "main": "index.js",
+  "description": "MCP server for exploring ECMAScript specification and engine262 JavaScript engine implementation",
+  "packageManager": "bun@1.2.8",
+  "engines": {
+    "bun": ">=1.0.0"
+  },
+  "type": "module",
+  "main": "src/mcp-server.ts",
+  "bin": {
+    "ask262": "bun run src/mcp-server.ts"
+  },
   "scripts": {
     "type-check": "tsc --noEmit",
     "lint": "biome check .",
@@ -14,17 +22,30 @@
     "test-evaluate": "bun run src/test/manual/test-evaluate-in-engine262.ts",
     "test-evaluate-timeout": "bun run src/test/manual/test-evaluate-timeout.ts",
     "test-search-spec-sections": "bun run src/test/manual/test-search-spec-sections.ts",
-    "agent": "bun run src/agent.ts",
-    "build": "bun run src/setup/buildGraph.ts",
-    "mcp-server": "bun run src/mcp-server.ts",
     "test-mcp-server": "bun run src/test/manual/test-mcp-server.ts",
     "test": "bun test"
   },
-  "keywords": [],
+  "keywords": [
+    "mcp",
+    "mcp-server",
+    "model-context-protocol",
+    "ecmascript",
+    "javascript",
+    "engine262",
+    "specification",
+    "js-engine"
+  ],
   "author": "",
   "license": "ISC",
-  "description": "",
-  "type": "module",
+  "files": [
+    "src/",
+    "storage/",
+    "engine262/lib/",
+    "graphology/",
+    "config.json",
+    "AGENTS.md",
+    "README.md"
+  ],
   "dependencies": {
     "@lancedb/lancedb": "^0.5.0",
     "@langchain/community": "0.2.0",

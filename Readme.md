@@ -1,51 +1,124 @@
-# RAG Pipeline for Language Specification Exploration
+# Ask262
 
-This project implements a RAG-based AI chat agent to explore the ECMAScript specification and its implementation in `engine262`.
+MCP server for exploring the ECMAScript specification and its implementation in [engine262](https://github.com/bendtherules/engine262).
+
+## Features
+
+- **Vector search** ECMAScript specification sections using semantic queries
+- **Execute JavaScript** in engine262 and capture which spec sections are hit
+- **Knowledge graph** mapping spec sections to implementation functions
+- **1-second timeout** on code execution for safety
 
 ## Prerequisites
 
-- **Node.js**: Version 18+
-- **Ollama**: Installed locally with an embedding model (e.g., `nomic-embed-text`)
-- **OpenAI-compatible Endpoint**: A hosted or local LLM service
+- **Bun**: Version 1.0.0 or higher ([install](https://bun.sh/docs/installation))
+- **Ollama**: Installed locally with an embedding model (e.g., `qwen3-embedding:0.6b`)
+
+## Installation
+
+```bash
+# Install globally with bun
+bun install -g ask262
+
+# Or run directly without installing
+bunx ask262
+
+# Or clone and install
+git clone <repository-url>
+cd ask262
+bun install
+```
 
 ## Setup
 
-1. **Install dependencies**:
+1. **Prepare environment**:
    ```bash
-   bun install
+   export OPENAI_API_BASE="your_endpoint_base_url"  # Optional
+   export OPENAI_API_KEY="your_api_key"             # Optional
    ```
 
-2. **Prepare environment**:
-   ```bash
-   export OPENAI_API_BASE="your_endpoint_base_url"
-   export OPENAI_API_KEY="your_api_key"
-   ```
+2. **Ensure spec is present** (only external requirement):
+   - `./spec-built/multipage/` - ECMAScript spec HTML files
+   
+   *Note: `storage/` (pre-built vectors), `engine262/lib/`, and `graphology/` are included in the package.*
 
-3. **Clone specification**:
-   (Ensure `./spec-built/multipage` contains the HTML files)
-
-4. **Ingest data**:
-   ```bash
-   bun run ingest
-   ```
-    *Note: This will take significant time as it generates local embeddings via Ollama for both the spec and the implementation.*
-
-5. **Build graph**:
+3. **Build knowledge graph** (first time only, if using custom spec):
    ```bash
    bun run build
    ```
 
-6. **Run tests**:
-   ```bash
-   bun test
-   ```
+## MCP Configuration
 
-## Usage
+Add to your MCP client configuration:
 
-Ask the agent questions about how code relates to the specification:
-
-```bash
-bun run agent "Explain how the 'if' statement works and show its implementation."
+**Claude Desktop** (`claude_desktop_config.json`):
+```json
+{
+  "mcpServers": {
+    "ask262": {
+      "command": "bun",
+      "args": ["run", "/path/to/ask262/src/mcp-server.ts"]
+    }
+  }
+}
 ```
 
-The agent will use tools to search the specification, explore the implementation code, and navigate the relationships between them using the graph.
+**OpenCode** (`.opencode/mcp.json`):
+```json
+{
+  "servers": {
+    "ask262": {
+      "command": "bun",
+      "args": ["run", "src/mcp-server.ts"]
+    }
+  }
+}
+```
+
+**Via global install** (after `bun install -g ask262`):
+```json
+{
+  "mcpServers": {
+    "ask262": {
+      "command": "ask262"
+    }
+  }
+}
+```
+
+**Via bunx** (no installation required):
+```json
+{
+  "mcpServers": {
+    "ask262": {
+      "command": "bunx",
+      "args": ["ask262"]
+    }
+  }
+}
+```
+
+## Available Tools
+
+| Tool | Description |
+|------|-------------|
+| `ask262_search_spec_sections` | Vector search ECMAScript spec for relevant sections |
+| `ask262_get_section_content` | Retrieve full content from a spec section |
+| `ask262_evaluate_in_engine262` | Execute JS in engine262 and capture spec section marks |
+
+## Testing
+
+```bash
+# Run MCP server tests
+bun run test-mcp-server
+
+# Test evaluate tool with timeout
+bun run test-evaluate-timeout
+
+# Test search functionality
+bun run test-search-spec-sections
+```
+
+## License
+
+ISC
