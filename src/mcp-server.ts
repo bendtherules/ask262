@@ -30,7 +30,7 @@ import {
   sectionContentToolMetadata,
   sectionContentToolName,
 } from "./agent-tools/index.js";
-import { STORAGE_DIR } from "./constants.js";
+import { EMBEDDING_MODEL, STORAGE_DIR } from "./constants.js";
 
 // #region MCP Types
 
@@ -75,8 +75,10 @@ export interface SearchSpecMCPOutput extends McpToolOutputBase {
 // #endregion
 
 // Initialize embeddings
+// OLLAMA_HOST env var is optional - @langchain/ollama defaults to http://localhost:11434
 const embeddings = new OllamaEmbeddings({
-  model: "qwen3-embedding:0.6b",
+  model: EMBEDDING_MODEL,
+  baseUrl: process.env.OLLAMA_HOST,
 });
 
 async function main() {

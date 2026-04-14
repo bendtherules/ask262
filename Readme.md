@@ -12,7 +12,11 @@ MCP server for exploring the ECMAScript specification and its implementation in 
 ## Prerequisites
 
 - **Bun**: Version 1.0.0 or higher ([install](https://bun.sh/docs/installation))
-- **Ollama**: Installed locally with an embedding model (e.g., `qwen3-embedding:0.6b`)
+- **Ollama**: Installed locally with `qwen3-embedding:0.6b` model pulled (`ollama pull qwen3-embedding:0.6b`)
+
+### Environment Variables
+
+- `OLLAMA_HOST` (optional): Ollama server URL. Defaults to `http://localhost:11434`
 
 ## Installation
 
