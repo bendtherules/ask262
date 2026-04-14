@@ -2,11 +2,10 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "Debug: Agent",
+      "name": "Debug: MCP Server",
       "type": "bun",
       "request": "launch",
-      "program": "${workspaceFolder}/agent.ts",
-      "args": ["How does array DefineOwnProperty work?"],
+      "program": "${workspaceFolder}/src/mcp-server.ts",
       "cwd": "${workspaceFolder}",
       "stopOnEntry": false,
       "watchMode": false
@@ -15,17 +14,7 @@
       "name": "Debug: Ingest",
       "type": "bun",
       "request": "launch",
-      "program": "${workspaceFolder}/setup/ingest.ts",
-      "cwd": "${workspaceFolder}",
-      "stopOnEntry": false,
-      "watchMode": false
-    },
-    {
-      "name": "Debug: Test Spec Retriever",
-      "type": "bun",
-      "request": "launch",
-      "program": "${workspaceFolder}/test/manual/test-spec-retriever.ts",
-      "args": ["array.[[DefineOwnProperty]]"],
+      "program": "${workspaceFolder}/src/setup/ingest.ts",
       "cwd": "${workspaceFolder}",
       "stopOnEntry": false,
       "watchMode": false
@@ -34,7 +23,7 @@
       "name": "Debug: Build Graph",
       "type": "bun",
       "request": "launch",
-      "program": "${workspaceFolder}/setup/buildGraph.ts",
+      "program": "${workspaceFolder}/src/setup/buildGraph.ts",
       "cwd": "${workspaceFolder}",
       "stopOnEntry": false,
       "watchMode": false
