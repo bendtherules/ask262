@@ -198,9 +198,7 @@ export async function main() {
       description:
         "How to orchestrate ask262 tools to explore JavaScript internals",
       argsSchema: {
-        question: z
-          .string()
-          .describe("Question"),
+        question: z.string().describe("Question"),
       },
     },
     async ({ question }) => ({
