@@ -132,8 +132,8 @@ function executeInChildProcess(
       "evaluateInEngine262.runner.mjs",
     );
 
-    // Spawn child process
-    const child = spawn("node", [runnerPath], {
+    // Spawn child process using Bun
+    const child = spawn("bun", [runnerPath], {
       stdio: ["pipe", "pipe", "pipe"],
       killSignal: "SIGKILL", // Force kill, can't be blocked
     });
