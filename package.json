@@ -44,7 +44,6 @@
     "storage/",
     "engine262/lib/",
     "graphology/",
-    "config.json",
     "AGENTS.md",
     "README.md"
   ],
