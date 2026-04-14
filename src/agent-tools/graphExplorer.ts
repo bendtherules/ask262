@@ -4,7 +4,6 @@
  */
 
 import { DynamicStructuredTool } from "@langchain/core/tools";
-// @ts-ignore - graphology type issue
 import type Graph from "graphology";
 import { z } from "zod";
 
@@ -20,7 +19,7 @@ const graphExplorerSchema = z.object({
  * Creates the graph explorer tool.
  * @param graph - Graphology graph instance
  */
-// @ts-ignore - Graph type issue
+// @ts-expect-error - Graph type issue
 export function createGraphExplorerTool(graph: Graph) {
   return new DynamicStructuredTool({
     name: "ask262_graph_explorer",

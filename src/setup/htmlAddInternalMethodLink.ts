@@ -1,8 +1,8 @@
 #!/usr/bin/env bun
+import { readFileSync, writeFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import type { CheerioAPI } from "cheerio";
 import * as cheerio from "cheerio";
-import { readFileSync, writeFileSync } from "fs";
-import { fileURLToPath } from "url";
 
 // Resolve the path to the HTML file (relative to repo root)
 const htmlUrl = new URL(

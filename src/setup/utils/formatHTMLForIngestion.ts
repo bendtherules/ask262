@@ -266,17 +266,17 @@ export function convertTablesToMarkdown($: cheerio.CheerioAPI): void {
     // Header row
     if (rows.length > 0) {
       const header = rows[0].concat(Array(maxCols - rows[0].length).fill(""));
-      mdLines.push("| " + header.join(" | ") + " |");
+      mdLines.push(`| ${header.join(" | ")} |`);
     }
 
     // Separator
-    mdLines.push("|" + Array(maxCols).fill(" --- ").join("|") + "|");
+    mdLines.push(`|${Array(maxCols).fill(" --- ").join("|")}|`);
 
     // Data rows (skip header if we have more rows)
     const dataRows = rows.length > 1 ? rows.slice(1) : [];
     for (const row of dataRows) {
       const padded = row.concat(Array(maxCols - row.length).fill(""));
-      mdLines.push("| " + padded.join(" | ") + " |");
+      mdLines.push(`| ${padded.join(" | ")} |`);
     }
 
     // Replace table with markdown

@@ -21,7 +21,7 @@ import { GRAPH_FILE } from "../constants.js";
  */
 async function buildGraph() {
   // Initialize a multi-graph (allows multiple edges between same nodes)
-  // @ts-ignore - graphology constructor type issue
+  // @ts-expect-error - graphology constructor type issue
   const graph = new Graph({
     multi: true,
     type: "directed",

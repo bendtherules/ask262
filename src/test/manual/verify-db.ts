@@ -60,7 +60,7 @@ async function getTable(): Promise<Table> {
   // Check if table exists
   try {
     return await db.openTable("spec_vectors");
-  } catch (error) {
+  } catch (_error) {
     console.error("❌ Table 'spec_vectors' not found in database");
     console.log("\nRun 'bun run ingest' first to populate the database.");
     process.exit(1);
@@ -97,7 +97,7 @@ program
   .option("-l, --limit <number>", "Number of results to show", "5")
   .action(async (query: string, options: { limit: string }) => {
     const table = await getTable();
-    await vectorSearch(table, query, parseInt(options.limit));
+    await vectorSearch(table, query, parseInt(options.limit, 10));
   });
 
 program
@@ -114,7 +114,7 @@ program
   .option("-n, --count <number>", "Number of samples to show", "3")
   .action(async (options: { count: string }) => {
     const table = await getTable();
-    await showSamples(table, parseInt(options.count));
+    await showSamples(table, parseInt(options.count, 10));
   });
 
 program
@@ -123,7 +123,7 @@ program
   .option("-m, --min <number>", "Minimum size in characters", "5000")
   .action(async (options: { min: string }) => {
     const table = await getTable();
-    await showLargeDocs(table, parseInt(options.min));
+    await showLargeDocs(table, parseInt(options.min, 10));
   });
 
 async function showSummary(table: Table) {
@@ -223,7 +223,7 @@ async function listSections(table: Table) {
 
   for (const [id, info] of sorted) {
     const title =
-      info.title.length > 50 ? info.title.slice(0, 47) + "..." : info.title;
+      info.title.length > 50 ? `${info.title.slice(0, 47)}...` : info.title;
     console.log(
       `${id.padEnd(30)} | ${title.padEnd(50)} | ${info.chunks.toString().padStart(3)}`,
     );
@@ -365,7 +365,7 @@ function printTreeNode(
   const connector = isLast ? "└── " : "├── ";
   const title =
     node.sectiontitle.length > 50
-      ? node.sectiontitle.slice(0, 47) + "..."
+      ? `${node.sectiontitle.slice(0, 47)}...`
       : node.sectiontitle;
   console.log(`${prefix}${connector}${node.sectionid}`);
   console.log(`${prefix}${isLast ? "    " : "│   "} ${title}`);
