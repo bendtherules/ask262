@@ -4,12 +4,25 @@
  */
 
 import type { Table } from "@lancedb/lancedb";
-import { DynamicStructuredTool } from "@langchain/core/tools";
 import { z } from "zod";
 
-/**
- * Tool metadata for reuse in OpenCode tools.
- */
+// #region Zod schemas (not exported)
+
+const sectionContentSchema = z.object({
+  text: z.string(),
+  sectionTitle: z.string().optional(),
+  partIndex: z.number().optional(),
+});
+
+const getSectionContentOutputSchema = z.object({
+  content: z.string(),
+  sectionCount: z.number(),
+});
+
+// #endregion
+
+// #region Exported Zod schemas
+
 export const toolMetadata = {
   description:
     "Retrieves all text chunks from a specific specification section by sectionid. " +
@@ -24,68 +37,88 @@ export const toolMetadata = {
   },
 };
 
-const getSectionContentSchema = z.object({
+export const inputSchema = z.object({
   sectionId: z.string().describe(toolMetadata.args.sectionId),
   recursive: z.boolean().default(true).describe(toolMetadata.args.recursive),
 });
 
+export const outputSchema = getSectionContentOutputSchema;
+
+export const toolName = "ask262_get_section_content";
+
+// #endregion
+
+// #region TypeScript types (inferred from Zod schemas)
+
+export type SectionContent = z.infer<typeof sectionContentSchema>;
+
+export type GetSectionContentOutput = z.infer<
+  typeof getSectionContentOutputSchema
+>;
+
+export type GetSectionContentInput = z.infer<typeof inputSchema>;
+
+// #endregion
+
 /**
- * Creates the get section content tool.
+ * Creates the get section content tool function.
  * Retrieves all text chunks from a specific specification section by sectionid.
  * Supports recursive fetching - if a section has children, it will fetch all descendants.
  * @param table - LanceDB table containing spec vectors
+ * @returns Function that retrieves content and returns structured output
  */
 export function createGetSectionContentTool(table: Table) {
-  return new DynamicStructuredTool({
-    name: "ask262_get_section_content",
-    description: toolMetadata.description,
-    schema: getSectionContentSchema,
-    func: async ({ sectionId, recursive }) => {
-      const allDocs: string[] = [];
-      const queue: string[] = [sectionId];
-      const visited = new Set<string>();
+  return async ({
+    sectionId,
+    recursive,
+  }: GetSectionContentInput): Promise<GetSectionContentOutput> => {
+    const allDocs: string[] = [];
+    const queue: string[] = [sectionId];
+    const visited = new Set<string>();
 
-      while (queue.length > 0) {
-        const currentId = queue.shift()!;
-        if (visited.has(currentId)) continue;
-        visited.add(currentId);
+    while (queue.length > 0) {
+      const currentId = queue.shift();
+      if (!currentId || visited.has(currentId)) continue;
+      visited.add(currentId);
 
-        const results = await table
-          .query()
-          .where(`sectionid = '${currentId}'`)
-          .limit(100)
-          .toArray();
+      const results = await table
+        .query()
+        .where(`sectionid = '${currentId}'`)
+        .limit(100)
+        .toArray();
 
-        // Sort by partindex to maintain order (nulls last for single-part sections)
-        const sortedResults = results.sort((a: unknown, b: unknown) => {
-          const aIndex = (a as { partindex?: number }).partindex ?? Infinity;
-          const bIndex = (b as { partindex?: number }).partindex ?? Infinity;
-          return aIndex - bIndex;
-        });
+      // Sort by partindex to maintain order (nulls last for single-part sections)
+      const sortedResults = results.sort((a: unknown, b: unknown) => {
+        const aIndex = (a as { partindex?: number }).partindex ?? Infinity;
+        const bIndex = (b as { partindex?: number }).partindex ?? Infinity;
+        return aIndex - bIndex;
+      });
 
-        for (const result of sortedResults) {
-          const typedResult = result as {
-            text?: string;
-            childrensectionids?: string[];
-            sectiontitle?: string;
-          };
+      for (const result of sortedResults) {
+        const typedResult = result as {
+          text?: string;
+          childrensectionids?: string[];
+          sectiontitle?: string;
+        };
 
-          if (typedResult.text) {
-            allDocs.push(typedResult.text);
-          }
+        if (typedResult.text) {
+          allDocs.push(typedResult.text);
+        }
 
-          // Add children to queue for recursive fetching only if recursive is true
-          if (
-            recursive &&
-            typedResult.childrensectionids &&
-            Array.isArray(typedResult.childrensectionids)
-          ) {
-            queue.push(...typedResult.childrensectionids);
-          }
+        // Add children to queue for recursive fetching only if recursive is true
+        if (
+          recursive &&
+          typedResult.childrensectionids &&
+          Array.isArray(typedResult.childrensectionids)
+        ) {
+          queue.push(...typedResult.childrensectionids);
         }
       }
+    }
 
-      return allDocs.join("\n\n---\n\n");
-    },
-  });
+    return {
+      content: allDocs.join("\n\n---\n\n"),
+      sectionCount: visited.size,
+    };
+  };
 }

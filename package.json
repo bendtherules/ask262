@@ -15,6 +15,8 @@
     "test-search-spec-sections": "bun run src/test/manual/test-search-spec-sections.ts",
     "agent": "bun run src/agent.ts",
     "build": "bun run src/setup/buildGraph.ts",
+    "mcp-server": "bun run src/mcp-server.ts",
+    "test-mcp-server": "bun run src/test/manual/test-mcp-server.ts",
     "test": "bun test"
   },
   "keywords": [],
@@ -28,6 +30,7 @@
     "@langchain/core": "^0.2.0",
     "@langchain/ollama": "^0.1.0",
     "@langchain/openai": "^0.1.0",
+    "@modelcontextprotocol/sdk": "^1.0.4",
     "acorn": "^8.16.0",
     "cheerio": "^1.2.0",
     "glob": "^13.0.6",

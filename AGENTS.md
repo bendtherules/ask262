@@ -38,6 +38,7 @@ ask262/
 │       ├── htmlAddInternalMethodLink.ts  # Adds internal method links
 │       ├── text-splitters/   # Text chunking utilities
 │       └── utils/            # Formatting utilities
+│   ├── mcp-server.ts         # MCP server for external tool integration
 │   └── test/                 # Manual verification tests
 │       └── manual/
 │           ├── verify-db.ts              # Verify database contents
@@ -66,7 +67,71 @@ bun test                # Run all tests
 bun run test-evaluate   # Test evaluate in engine262 tool
 bun run test-search-spec-sections "query"  # Test vector search tool with query
 bun run agent "Query"   # Run agent with question
+bun run mcp-server      # Start MCP server (stdio transport)
+bun run test-mcp-server # Test MCP server with all tools
 ```
+
+## MCP Server
+
+Ask262 can run as an MCP (Model Context Protocol) server, making its tools available to any MCP-compatible client (Claude Desktop, OpenCode, etc.).
+
+### Available MCP Tools
+
+| Tool | Description |
+|------|-------------|
+| `ask262_search_spec_sections` | Vector search ECMAScript spec for relevant sections |
+| `ask262_get_section_content` | Retrieve full content from a spec section |
+| `ask262_evaluate_in_engine262` | Execute JS in engine262 and capture spec sections |
+
+### Configuration
+
+Add to your MCP client configuration:
+
+**Claude Desktop (`claude_desktop_config.json`):**
+```json
+{
+  "mcpServers": {
+    "ask262": {
+      "command": "bun",
+      "args": ["run", "/path/to/ask262/src/mcp-server.ts"],
+      "cwd": "/path/to/ask262"
+    }
+  }
+}
+```
+
+**OpenCode (`.opencode/mcp.json`):**
+```json
+{
+  "servers": {
+    "ask262": {
+      "command": "bun",
+      "args": ["run", "src/mcp-server.ts"]
+    }
+  }
+}
+```
+
+### Testing
+
+Test the MCP server before configuring your client:
+
+```bash
+# Run automated tests for all MCP tools
+bun run test-mcp-server
+```
+
+This tests:
+- Tool listing
+- Vector search (`ask262_search_spec_sections`)
+- Section content retrieval (`ask262_get_section_content`)
+- Code evaluation with console capture (`ask262_evaluate_in_engine262`)
+
+### Prerequisites
+
+Before running the MCP server:
+1. Ensure `storage/` directory exists with ingested spec vectors (`bun run ingest`)
+2. Ensure Ollama is running with `qwen3-embedding:0.6b` model
 
 ## Code Style Guidelines
 
