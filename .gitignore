@@ -33,8 +33,6 @@ coverage/
 ## Spec
 
 
-## Vector stores
-/storage/
 
 ## Graphs
 /graphology/
