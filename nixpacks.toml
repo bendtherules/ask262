@@ -1,0 +1,17 @@
+# Nixpacks configuration for ask262
+# Used by Railway, Coolify, and other PaaS platforms
+# Docs: https://nixpacks.com/docs/configuration/file
+
+[phases.build]
+cmds = ["bun install"]
+
+[phases.setup]
+nixPkgs = ["bun"]
+
+[start]
+cmd = "bun run ask262-http"
+
+[variables]
+# Default environment variables
+ASK262_PORT = "8080"
+ASK262_EMBEDDING_PROVIDER = "fireworks"
