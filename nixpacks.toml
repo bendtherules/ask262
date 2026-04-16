@@ -6,7 +6,7 @@
 cmds = ["bun install"]
 
 [phases.setup]
-nixPkgs = ["bun"]
+nixPkgs = ["...", "bun"]
 
 [start]
 cmd = "bun run ask262-http"
