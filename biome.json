@@ -5,5 +5,13 @@
     "lineWidth": 80,
     "lineEnding": "lf"
   },
-  "files": { "includes": ["**", "!!spec-built", "!!engine262", "!!graphology"] }
+  "files": {
+    "includes": ["**", "!!spec-built", "!!engine262", "!!graphology"]
+  },
+  "overrides": [
+    {
+      "includes": ["package.json"],
+      "formatter": { "enabled": false }
+    }
+  ]
 }
