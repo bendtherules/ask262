@@ -12,7 +12,9 @@ import { z } from "zod";
 const searchSpecResultSchema = z.object({
   sectionId: z.string(),
   sectionTitle: z.string(),
-  score: z.number(),
+  vectorDistance: z
+    .number()
+    .describe("Vector distance from query (lower = more similar)"),
   partIndex: z.number().nullable(),
   totalParts: z.number().nullable(),
   content: z.string(),
@@ -81,7 +83,7 @@ export function createSearchSpecSectionsTool(
       (r: Record<string, unknown>) => ({
         sectionId: String(r.sectionid || "unknown"),
         sectionTitle: String(r.sectiontitle || "unknown"),
-        score: Number(r._distance || 0),
+        vectorDistance: Number(r._distance || 0),
         partIndex: (r.partindex as number | undefined) ?? null,
         totalParts: (r.totalparts as number | undefined) ?? null,
         content: String(r.text || ""),
