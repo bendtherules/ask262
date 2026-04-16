@@ -32,7 +32,7 @@ import {
   sectionContentToolMetadata,
   sectionContentToolName,
 } from "./agent-tools/index.js";
-import { STORAGE_DIR as STORAGE_DIR_REL } from "./constants.js";
+import { DEFAULT_PORT, STORAGE_DIR as STORAGE_DIR_REL } from "./constants.js";
 import { createEmbeddings } from "./lib/embeddings-factory.js";
 
 // Resolve storage path relative to this script's directory
@@ -43,8 +43,8 @@ const STORAGE_DIR = path.resolve(__dirname, "..", STORAGE_DIR_REL);
 // Initialize embeddings based on ASK262_EMBEDDING_PROVIDER env var
 const embeddings = createEmbeddings();
 
-// Server port (default: 8081)
-const PORT = Number(process.env.ASK262_PORT) || 8081;
+// Server port (uses env var or default from constants)
+const PORT = Number(process.env.ASK262_PORT) || DEFAULT_PORT;
 
 /**
  * Factory function to create a fresh MCP server instance.

@@ -12,3 +12,6 @@ export const EMBEDDING_PROVIDER =
   process.env.ASK262_EMBEDDING_PROVIDER ?? "ollama";
 export const FIREWORKS_EMBEDDING_MODEL = "fireworks/qwen3-embedding-8b";
 export const FIREWORKS_BASE_URL = "https://api.fireworks.ai/inference/v1";
+
+// Server configuration
+export const DEFAULT_PORT = 8081;
