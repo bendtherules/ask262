@@ -38,7 +38,7 @@ export function createEmbeddings(provider?: EmbeddingProvider): Embeddings {
 
   switch (selectedProvider) {
     case "ollama": {
-      console.log("[Embeddings] Using Ollama provider");
+      console.error("[Embeddings] Using Ollama provider");
       return new OllamaEmbeddings({
         model: OLLAMA_EMBEDDING_MODEL,
         baseUrl: process.env.OLLAMA_HOST,
@@ -50,7 +50,7 @@ export function createEmbeddings(provider?: EmbeddingProvider): Embeddings {
       if (!apiKey) {
         throw new Error("FIREWORKS_API_KEY environment variable is required");
       }
-      console.log("[Embeddings] Using Fireworks provider");
+      console.error("[Embeddings] Using Fireworks provider");
       return new FireworksEmbeddings({
         apiKey,
         modelName: FIREWORKS_EMBEDDING_MODEL,

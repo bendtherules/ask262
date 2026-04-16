@@ -31,7 +31,7 @@ nano .env  # or use your preferred editor
 - `ASK262_EMBEDDING_PROVIDER`: Choose `ollama` (local) or `fireworks` (cloud). Default: `ollama`
 - `OLLAMA_HOST`: Ollama server URL. Default: `http://localhost:11434`
 - `FIREWORKS_API_KEY`: Required if using Fireworks. Get from https://app.fireworks.ai
-- `ASK262_PORT`: HTTP server port. Default: `3000`
+- `ASK262_PORT`: HTTP server port. Default: `8081`
 
 **Example `.env`:**
 ```bash
@@ -98,7 +98,7 @@ Add to your MCP client configuration using `bunx` (no installation required):
   "mcp": {
     "ask262": {
       "type": "remote",
-      "url": "http://localhost:3000/mcp",
+      "url": "http://localhost:8081/mcp",
       "enabled": true
     }
   }
@@ -107,7 +107,7 @@ Add to your MCP client configuration using `bunx` (no installation required):
 
 Start the HTTP server first:
 ```bash
-bun run mcp-http        # Development
+bun run ask262-http     # Development
 ask262-http             # After npm install -g
 # Or with custom port:
 ASK262_PORT=8080 ask262-http

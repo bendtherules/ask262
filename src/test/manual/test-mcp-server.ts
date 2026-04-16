@@ -9,7 +9,7 @@ import type {
   EvaluateToolMCPOutput,
   GetSectionContentMCPOutput,
   SearchSpecMCPOutput,
-} from "../../mcp-server.js";
+} from "../../mcp-server-stdio.js";
 
 async function testMCPServer() {
   console.log("Starting MCP Server tests...\n");
@@ -17,7 +17,7 @@ async function testMCPServer() {
   // Create transport connecting to the server
   const transport = new StdioClientTransport({
     command: "bun",
-    args: ["run", "src/mcp-server.ts"],
+    args: ["run", "src/mcp-server-stdio.ts"],
   });
 
   // Create client

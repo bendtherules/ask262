@@ -37,7 +37,7 @@ ask262/
 │       ├── htmlAddInternalMethodLink.ts  # Adds internal method links
 │       ├── text-splitters/   # Text chunking utilities
 │       └── utils/            # Formatting utilities
-│   ├── mcp-server.ts         # MCP server for external tool integration
+│   ├── mcp-server-stdio.ts   # MCP server (stdio transport)
 │   └── test/                 # Manual verification tests
 │       └── manual/
 │           ├── verify-db.ts              # Verify database contents
@@ -65,7 +65,7 @@ bun test                # Run all tests
 bun run test-evaluate   # Test evaluate in engine262 tool
 bun run test-search-spec-sections "query"  # Test vector search tool with query
 bun run agent "Query"   # Run agent with question
-bun run mcp-server      # Start MCP server (stdio transport)
+bun run ask262-stdio    # Start MCP server (stdio transport)
 bun run test-mcp-server # Test MCP server with all tools
 ```
 
@@ -91,7 +91,7 @@ Add to your MCP client configuration:
   "mcpServers": {
     "ask262": {
       "command": "bun",
-      "args": ["run", "/path/to/ask262/src/mcp-server.ts"],
+      "args": ["run", "/path/to/ask262/src/mcp-server-stdio.ts"],
       "cwd": "/path/to/ask262"
     }
   }
@@ -107,7 +107,7 @@ Add to your MCP client configuration:
   "mcp": {
     "ask262": {
       "type": "local",
-      "command": ["bun", "run", "src/mcp-server.ts"],
+      "command": ["bun", "run", "src/mcp-server-stdio.ts"],
       "enabled": true,
       "environment": {
         "OLLAMA_HOST": "http://localhost:11434"
@@ -124,7 +124,7 @@ Add to your MCP client configuration:
   "mcp": {
     "ask262": {
       "type": "remote",
-      "url": "http://localhost:3000/mcp",
+      "url": "http://localhost:8081/mcp",
       "enabled": true
     }
   }
@@ -133,7 +133,7 @@ Add to your MCP client configuration:
 
 Start the HTTP server first:
 ```bash
-bun run mcp-http        # Development
+bun run ask262-http     # Development
 ask262-http             # After npm install -g
 ```
 

@@ -43,8 +43,8 @@ const STORAGE_DIR = path.resolve(__dirname, "..", STORAGE_DIR_REL);
 // Initialize embeddings based on ASK262_EMBEDDING_PROVIDER env var
 const embeddings = createEmbeddings();
 
-// Server port (default: 3000)
-const PORT = Number(process.env.ASK262_PORT) || 3000;
+// Server port (default: 8081)
+const PORT = Number(process.env.ASK262_PORT) || 8081;
 
 /**
  * Factory function to create a fresh MCP server instance.

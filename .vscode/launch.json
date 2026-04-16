@@ -5,7 +5,7 @@
       "name": "Debug: MCP Server",
       "type": "bun",
       "request": "launch",
-      "program": "${workspaceFolder}/src/mcp-server.ts",
+      "program": "${workspaceFolder}/src/mcp-server-stdio.ts",
       "cwd": "${workspaceFolder}",
       "stopOnEntry": false,
       "watchMode": false

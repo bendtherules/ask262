@@ -7,9 +7,9 @@
     "bun": ">=1.0.0"
   },
   "type": "module",
-  "main": "src/mcp-server.ts",
+  "main": "src/mcp-server-stdio.ts",
   "bin": {
-    "ask262": "src/mcp-server.ts",
+    "ask262": "src/mcp-server-stdio.ts",
     "ask262-http": "src/mcp-server-http.ts"
   },
   "scripts": {
@@ -24,7 +24,8 @@
     "test-evaluate-timeout": "bun run src/test/manual/test-evaluate-timeout.ts",
     "test-search-spec-sections": "bun run src/test/manual/test-search-spec-sections.ts",
     "test-mcp-server": "bun run src/test/manual/test-mcp-server.ts",
-    "mcp-http": "bun run src/mcp-server-http.ts",
+    "ask262-stdio": "bun run src/mcp-server-stdio.ts",
+    "ask262-http": "bun run src/mcp-server-http.ts",
     "test": "bun test",
     "prepublish": "npm run type-check && npm run lint && npm pack --dry-run",
     "release": "bash scripts/release.sh --patch"
