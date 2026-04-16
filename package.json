@@ -9,7 +9,8 @@
   "type": "module",
   "main": "src/mcp-server.ts",
   "bin": {
-    "ask262": "src/mcp-server.ts"
+    "ask262": "src/mcp-server.ts",
+    "ask262-http": "src/mcp-server-http.ts"
   },
   "scripts": {
     "type-check": "tsc --noEmit",
@@ -23,6 +24,7 @@
     "test-evaluate-timeout": "bun run src/test/manual/test-evaluate-timeout.ts",
     "test-search-spec-sections": "bun run src/test/manual/test-search-spec-sections.ts",
     "test-mcp-server": "bun run src/test/manual/test-mcp-server.ts",
+    "mcp-http": "bun run src/mcp-server-http.ts",
     "test": "bun test",
     "prepublish": "npm run type-check && npm run lint && npm pack --dry-run",
     "release": "bash scripts/release.sh --patch"
@@ -57,6 +59,7 @@
     "cheerio": "^1.2.0",
     "glob": "^13.0.6",
     "graphology": "^0.26.0",
+    "hono": "^4.12.14",
     "langchain": "^0.2.0",
     "ora": "^9.3.0"
   },

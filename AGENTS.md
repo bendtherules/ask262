@@ -98,16 +98,43 @@ Add to your MCP client configuration:
 }
 ```
 
-**OpenCode (`.opencode/mcp.json`):**
+**OpenCode (`.opencode/mcp.json` or `~/.config/opencode/opencode.json`):**
+
+*stdio (local process):*
 ```json
 {
-  "servers": {
+  "$schema": "https://opencode.ai/config.json",
+  "mcp": {
     "ask262": {
-      "command": "bun",
-      "args": ["run", "src/mcp-server.ts"]
+      "type": "local",
+      "command": ["bun", "run", "src/mcp-server.ts"],
+      "enabled": true,
+      "environment": {
+        "OLLAMA_HOST": "http://localhost:11434"
+      }
     }
   }
 }
+```
+
+*http (stateless JSON server):*
+```json
+{
+  "$schema": "https://opencode.ai/config.json",
+  "mcp": {
+    "ask262": {
+      "type": "remote",
+      "url": "http://localhost:3000/mcp",
+      "enabled": true
+    }
+  }
+}
+```
+
+Start the HTTP server first:
+```bash
+bun run mcp-http        # Development
+ask262-http             # After npm install -g
 ```
 
 ### Testing

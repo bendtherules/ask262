@@ -50,6 +50,8 @@ Add to your MCP client configuration using `bunx` (no installation required):
 ```
 
 **OpenCode** (global config `~/.config/opencode/opencode.json` or project config `opencode.json`):
+
+*stdio (local process):*
 ```json
 {
   "$schema": "https://opencode.ai/config.json",
@@ -61,6 +63,28 @@ Add to your MCP client configuration using `bunx` (no installation required):
     }
   }
 }
+```
+
+*http (stateless JSON server):*
+```json
+{
+  "$schema": "https://opencode.ai/config.json",
+  "mcp": {
+    "ask262": {
+      "type": "remote",
+      "url": "http://localhost:3000/mcp",
+      "enabled": true
+    }
+  }
+}
+```
+
+Start the HTTP server first:
+```bash
+bun run mcp-http        # Development
+ask262-http             # After npm install -g
+# Or with custom port:
+ASK262_PORT=8080 ask262-http
 ```
 
 ## Available Tools
