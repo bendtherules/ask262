@@ -4,17 +4,18 @@ import readline from "node:readline";
 import * as lancedbSdk from "@lancedb/lancedb";
 import { Index } from "@lancedb/lancedb";
 import { Document } from "@langchain/core/documents";
-import { OllamaEmbeddings } from "@langchain/ollama";
+import type { Embeddings } from "@langchain/core/embeddings";
 import * as cheerio from "cheerio";
+import { Command } from "commander";
 import { glob } from "glob";
 import ora from "ora";
-import { EMBEDDING_MODEL, SPEC_DIR, STORAGE_DIR } from "../constants.js";
+import { SPEC_DIR, STORAGE_DIR } from "../constants.js";
+import {
+  createEmbeddings,
+  type EmbeddingProvider,
+} from "../lib/embeddings-factory.js";
 import { HTMLTextSplitter } from "./text-splitters/index.js";
 import { formatForIngestion } from "./utils/formatHTMLForIngestion.js";
-
-const embeddings = new OllamaEmbeddings({
-  model: EMBEDDING_MODEL,
-});
 
 const htmlSplitter = new HTMLTextSplitter({
   chunkSize: 8192,
@@ -48,6 +49,7 @@ interface ChunkInfo {
 
 async function generateEmbeddingsWithProgress(
   documents: Document[],
+  embeddings: Embeddings,
 ): Promise<number[][]> {
   const total = documents.length;
   const vectors: number[][] = [];
@@ -275,6 +277,37 @@ async function buildSpecDocuments(): Promise<Document[]> {
 }
 
 async function main() {
+  // Parse command line arguments using Commander
+  const program = new Command()
+    .name("ingest")
+    .description("Ingest ECMAScript specification into vector database")
+    .version("1.0.0")
+    .option(
+      "-p, --embedding-provider <provider>",
+      "Embedding provider to use (ollama or fireworks)",
+      process.env.ASK262_EMBEDDING_PROVIDER ?? "ollama",
+    )
+    .option(
+      "-y, --yes",
+      "Automatically overwrite existing vector store without prompting",
+      false,
+    )
+    .parse();
+
+  const options = program.opts();
+  const provider = options.embeddingProvider as EmbeddingProvider;
+
+  // Validate provider
+  if (provider !== "ollama" && provider !== "fireworks") {
+    console.error(`Error: Unknown embedding provider "${provider}"`);
+    console.error('Use "ollama" or "fireworks"');
+    process.exit(1);
+  }
+
+  // Create embeddings instance based on provider
+  console.log(`Initializing embeddings provider: ${provider}`);
+  const embeddings = createEmbeddings(provider);
+
   console.log("Building specification documents...");
   const specDocs = await buildSpecDocuments();
   console.log(`Built ${specDocs.length} specification documents.`);
@@ -306,9 +339,12 @@ async function main() {
   }
 
   if (tableExists) {
-    const shouldOverwrite = await askUser(
-      "Do you want to overwrite the existing vector store?",
-    );
+    let shouldOverwrite = options.yes;
+    if (!shouldOverwrite) {
+      shouldOverwrite = await askUser(
+        "Do you want to overwrite the existing vector store?",
+      );
+    }
     if (!shouldOverwrite) {
       console.log("Ingest cancelled by user.");
       process.exit(0);
@@ -318,7 +354,7 @@ async function main() {
   }
 
   console.log("Generating embeddings...");
-  const vectors = await generateEmbeddingsWithProgress(specDocs);
+  const vectors = await generateEmbeddingsWithProgress(specDocs, embeddings);
 
   console.log("Creating table with documents...");
   // Prepare data records with vector, text, and metadata

@@ -8,7 +8,6 @@
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import * as lancedbSdk from "@lancedb/lancedb";
-import { OllamaEmbeddings } from "@langchain/ollama";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
@@ -35,10 +34,8 @@ import {
   sectionContentToolMetadata,
   sectionContentToolName,
 } from "./agent-tools/index.js";
-import {
-  EMBEDDING_MODEL,
-  STORAGE_DIR as STORAGE_DIR_REL,
-} from "./constants.js";
+import { STORAGE_DIR as STORAGE_DIR_REL } from "./constants.js";
+import { createEmbeddings } from "./lib/embeddings-factory.js";
 
 // Resolve storage path relative to this script's directory
 const __filename = fileURLToPath(import.meta.url);
@@ -87,12 +84,8 @@ export interface SearchSpecMCPOutput extends McpToolOutputBase {
 
 // #endregion
 
-// Initialize embeddings
-// OLLAMA_HOST env var is optional - @langchain/ollama defaults to http://localhost:11434
-const embeddings = new OllamaEmbeddings({
-  model: EMBEDDING_MODEL,
-  baseUrl: process.env.OLLAMA_HOST,
-});
+// Initialize embeddings based on ASK262_EMBEDDING_PROVIDER env var
+const embeddings = createEmbeddings();
 
 export async function main() {
   // Connect to LanceDB

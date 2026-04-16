@@ -14,7 +14,7 @@
 import * as lancedbSdk from "@lancedb/lancedb";
 import { OllamaEmbeddings } from "@langchain/ollama";
 import { createSearchSpecSectionsTool } from "../../agent-tools/index.js";
-import { EMBEDDING_MODEL, STORAGE_DIR } from "../../constants.js";
+import { OLLAMA_EMBEDDING_MODEL, STORAGE_DIR } from "../../constants.js";
 
 async function main() {
   // Get query from command line or use default
@@ -28,7 +28,7 @@ async function main() {
 
   try {
     const embeddings = new OllamaEmbeddings({
-      model: EMBEDDING_MODEL,
+      model: OLLAMA_EMBEDDING_MODEL,
     });
 
     const db = await lancedbSdk.connect(STORAGE_DIR);

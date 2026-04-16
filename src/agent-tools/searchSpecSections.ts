@@ -4,7 +4,7 @@
  */
 
 import type { Table } from "@lancedb/lancedb";
-import type { OllamaEmbeddings } from "@langchain/ollama";
+import type { Embeddings } from "@langchain/core/embeddings";
 import { z } from "zod";
 
 // #region Zod schemas (not exported)
@@ -62,12 +62,12 @@ export type SearchSpecInput = z.infer<typeof inputSchema>;
  * Creates the search spec sections tool function.
  * Performs semantic vector search to find relevant spec sections.
  * @param table - LanceDB table containing spec vectors
- * @param embeddings - Ollama embeddings instance
+ * @param embeddings - Embeddings instance (Ollama or Fireworks)
  * @returns Function that performs the search and returns structured output
  */
 export function createSearchSpecSectionsTool(
   table: Table,
-  embeddings: OllamaEmbeddings,
+  embeddings: Embeddings,
 ) {
   return async ({ query }: SearchSpecInput): Promise<SearchSpecOutput> => {
     // Generate embedding for the query

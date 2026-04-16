@@ -10,7 +10,6 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { serve } from "@hono/node-server";
 import * as lancedbSdk from "@lancedb/lancedb";
-import { OllamaEmbeddings } from "@langchain/ollama";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js";
 import { Hono } from "hono";
@@ -33,21 +32,16 @@ import {
   sectionContentToolMetadata,
   sectionContentToolName,
 } from "./agent-tools/index.js";
-import {
-  EMBEDDING_MODEL,
-  STORAGE_DIR as STORAGE_DIR_REL,
-} from "./constants.js";
+import { STORAGE_DIR as STORAGE_DIR_REL } from "./constants.js";
+import { createEmbeddings } from "./lib/embeddings-factory.js";
 
 // Resolve storage path relative to this script's directory
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const STORAGE_DIR = path.resolve(__dirname, "..", STORAGE_DIR_REL);
 
-// Initialize embeddings
-const embeddings = new OllamaEmbeddings({
-  model: EMBEDDING_MODEL,
-  baseUrl: process.env.OLLAMA_HOST,
-});
+// Initialize embeddings based on ASK262_EMBEDDING_PROVIDER env var
+const embeddings = createEmbeddings();
 
 // Server port (default: 3000)
 const PORT = Number(process.env.ASK262_PORT) || 3000;

@@ -16,7 +16,33 @@ MCP server for exploring the ECMAScript specification and its implementation in 
 
 ### Environment Variables
 
-- `OLLAMA_HOST` (optional): Ollama server URL. Defaults to `http://localhost:11434`
+Ask262 uses Bun's built-in `.env` support (no dotenv package needed).
+
+**Setup:**
+```bash
+# Copy the example file
+cp .env.example .env
+
+# Edit with your values
+nano .env  # or use your preferred editor
+```
+
+**Key variables:**
+- `ASK262_EMBEDDING_PROVIDER`: Choose `ollama` (local) or `fireworks` (cloud). Default: `ollama`
+- `OLLAMA_HOST`: Ollama server URL. Default: `http://localhost:11434`
+- `FIREWORKS_API_KEY`: Required if using Fireworks. Get from https://app.fireworks.ai
+- `ASK262_PORT`: HTTP server port. Default: `3000`
+
+**Example `.env`:**
+```bash
+# Use Fireworks for embeddings (faster, cloud-based)
+ASK262_EMBEDDING_PROVIDER=fireworks
+FIREWORKS_API_KEY=fw_your_key_here
+
+# Or use local Ollama (default)
+# ASK262_EMBEDDING_PROVIDER=ollama
+# OLLAMA_HOST=http://localhost:11434
+```
 
 ## Installation
 
