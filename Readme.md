@@ -9,22 +9,68 @@ MCP server for exploring the ECMAScript specification and its implementation in 
 - **Knowledge graph** mapping spec sections to implementation functions
 - **1-second timeout** on code execution for safety
 
-## Prerequisites
+## Available Tools
+
+| Tool | Description |
+|------|-------------|
+| `ask262_search_spec_sections` | Vector search ECMAScript spec for relevant sections |
+| `ask262_get_section_content` | Retrieve full content from a spec section |
+| `ask262_evaluate_in_engine262` | Execute JS in engine262 and capture spec section marks |
+
+## Quick Start (Hosted Instance)
+
+Use the hosted MCP server without any local setup:
+
+**Claude Desktop** (`claude_desktop_config.json`):
+```json
+{
+  "mcpServers": {
+    "ask262": {
+      "url": "https://ask262.bendtherules.in/mcp"
+    }
+  }
+}
+```
+
+**OpenCode** (`~/.config/opencode/opencode.json`):
+```json
+{
+  "$schema": "https://opencode.ai/config.json",
+  "mcp": {
+    "ask262": {
+      "type": "remote",
+      "url": "https://ask262.bendtherules.in/mcp",
+      "enabled": true
+    }
+  }
+}
+```
+
+## Local Installation
+
+### Prerequisites
 
 - **Bun**: Version 1.0.0 or higher ([install](https://bun.sh/docs/installation))
 - **Ollama**: Installed locally with `qwen3-embedding:0.6b` model pulled (`ollama pull qwen3-embedding:0.6b`)
 
-### Environment Variables
+### Setup
 
-Ask262 uses Bun's built-in `.env` support (no dotenv package needed).
-
-**Setup:**
 ```bash
-# Copy the example file
-cp .env.example .env
+# Clone and install
+git clone https://github.com/bendtherules/ask262
+cd ask262
+bun install
 
-# Edit with your values
-nano .env  # or use your preferred editor
+# Or install globally
+bun install -g ask262
+```
+
+### Environment Configuration
+
+Copy `.env.example` and configure:
+
+```bash
+cp .env.example .env
 ```
 
 **Key variables:**
@@ -44,26 +90,11 @@ FIREWORKS_API_KEY=fw_your_key_here
 # OLLAMA_HOST=http://localhost:11434
 ```
 
-## Installation
-
-```bash
-# Install globally with bun
-bun install -g ask262
-
-# Or run directly without installing
-bunx ask262
-
-# Or clone and install
-git clone https://github.com/bendtherules/ask262
-cd ask262
-bun install
-```
-
-## MCP Configuration
-
-Add to your MCP client configuration using `bunx` (no installation required):
+### Local MCP Configuration
 
 **Claude Desktop** (`claude_desktop_config.json`):
+
+#### stdio (no server needed)
 ```json
 {
   "mcpServers": {
@@ -75,9 +106,25 @@ Add to your MCP client configuration using `bunx` (no installation required):
 }
 ```
 
-**OpenCode** (global config `~/.config/opencode/opencode.json` or project config `opencode.json`):
+#### http (requires server)
+```json
+{
+  "mcpServers": {
+    "ask262": {
+      "url": "http://localhost:8081/mcp"
+    }
+  }
+}
+```
 
-*stdio (local process):*
+⬇️ **Required for HTTP config above:** 
+```bash
+bun run ask262-http # start HTTP server
+```
+
+**OpenCode** (`~/.config/opencode/opencode.json`):
+
+#### stdio (no server needed)
 ```json
 {
   "$schema": "https://opencode.ai/config.json",
@@ -91,7 +138,7 @@ Add to your MCP client configuration using `bunx` (no installation required):
 }
 ```
 
-*http (stateless JSON server):*
+#### http (requires server)
 ```json
 {
   "$schema": "https://opencode.ai/config.json",
@@ -105,35 +152,10 @@ Add to your MCP client configuration using `bunx` (no installation required):
 }
 ```
 
-Start the HTTP server first:
+⬇️ **Required for HTTP config above:** 
 ```bash
-bun run ask262-http     # Development
-ask262-http             # After npm install -g
-# Or with custom port:
-ASK262_PORT=8080 ask262-http
+bun run ask262-http # start HTTP server
 ```
-
-**Or use the hosted instance:**
-```json
-{
-  "$schema": "https://opencode.ai/config.json",
-  "mcp": {
-    "ask262": {
-      "type": "remote",
-      "url": "https://ask262.bendtherules.in/mcp",
-      "enabled": true
-    }
-  }
-}
-```
-
-## Available Tools
-
-| Tool | Description |
-|------|-------------|
-| `ask262_search_spec_sections` | Vector search ECMAScript spec for relevant sections |
-| `ask262_get_section_content` | Retrieve full content from a spec section |
-| `ask262_evaluate_in_engine262` | Execute JS in engine262 and capture spec section marks |
 
 ## Testing
 
@@ -160,11 +182,16 @@ For development or using a custom ECMAScript specification:
    ```
 
 2. **Ensure spec is present**:
-   - `./spec-built/multipage/` - ECMAScript spec HTML files
+   - `./spec-built/multipage/` - Built ECMAScript spec HTML files
 
-3. **Build knowledge graph** (if using custom spec):
+   Steps -
+   1. `git clone https://github.com/tc39/ecma262`
+   2. `npm i && npm run build`
+   3. copy `out/` from ecma262 to `spec-built/` in this repo
+
+3. **Build vectors (lancedb)**
    ```bash
-   bun run build
+   bun run ingest
    ```
 
 4. **Release to npm** (maintainers only):
