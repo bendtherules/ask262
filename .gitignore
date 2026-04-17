@@ -36,3 +36,8 @@ coverage/
 
 ## Graphs
 /graphology/
+
+# Track engine262 built files needed for deployment
+!engine262/lib/engine262.mjs
+!engine262/lib/engine262.d.ts
+!engine262/lib/inspector.mjs
