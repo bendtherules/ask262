@@ -113,6 +113,20 @@ ask262-http             # After npm install -g
 ASK262_PORT=8080 ask262-http
 ```
 
+**Or use the hosted instance:**
+```json
+{
+  "$schema": "https://opencode.ai/config.json",
+  "mcp": {
+    "ask262": {
+      "type": "remote",
+      "url": "https://ask262.bendtherules.in/mcp",
+      "enabled": true
+    }
+  }
+}
+```
+
 ## Available Tools
 
 | Tool | Description |
