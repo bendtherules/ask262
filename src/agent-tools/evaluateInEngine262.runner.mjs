@@ -12,7 +12,9 @@ process.stdin.on("data", (chunk) => {
 process.stdin.on("end", async () => {
   try {
     // Load engine262
+    console.error("[RUNNER] Loading engine262...");
     const engine = await import("../../engine262/lib/engine262.mjs");
+    console.error("[RUNNER] Engine loaded successfully");
 
     const Agent = engine.Agent;
     const ManagedRealm = engine.ManagedRealm;
@@ -31,9 +33,11 @@ process.stdin.on("end", async () => {
     const consoleOutput = [];
 
     // Set up agent and realm
+    console.error("[RUNNER] Creating agent and realm");
     const agent = new Agent();
     setSurroundingAgent(agent);
     const realm = new ManagedRealm();
+    console.error("[RUNNER] Realm created");
 
     // Expose ask262Debug and console to the evaluated code
     realm.scope(() => {
@@ -108,10 +112,13 @@ process.stdin.on("end", async () => {
     });
 
     // Start tracing
+    console.error("[RUNNER] Starting trace");
     ask262Debug.startTrace();
 
     // Execute the code
+    console.error("[RUNNER] Executing code...");
     const completion = realm.evaluateScript(code);
+    console.error("[RUNNER] Code execution complete");
 
     // Stop tracing
     ask262Debug.stopTrace();
@@ -123,12 +130,14 @@ process.stdin.on("end", async () => {
         errorValue?.ErrorData?.stringValue?.() ||
         errorValue?.ErrorData?.value ||
         "Unknown error";
+      console.error(`[RUNNER] Script threw error: ${errorMessage}`);
       console.log(JSON.stringify({ error: errorMessage }));
       process.exit(0);
     }
 
     // Get captured marks
     const marks = ask262Debug.marks;
+    console.error(`[RUNNER] Captured ${marks.length} marks`);
 
     // Filter and group marks by important flag
     const importantMarks = marks.filter((m) => m.important);
@@ -144,11 +153,8 @@ process.stdin.on("end", async () => {
     console.log(JSON.stringify(result));
     process.exit(0);
   } catch (error) {
-    console.log(
-      JSON.stringify({
-        error: error instanceof Error ? error.message : String(error),
-      }),
-    );
+    const errorMsg = error instanceof Error ? error.message : String(error);
+    console.error(`[RUNNER] Fatal error: ${errorMsg}`);
     process.exit(1);
   }
 });
