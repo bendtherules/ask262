@@ -1,5 +1,6 @@
 node_modules
 declaration
+lib
 test.mjs
 test.js
 .eslintcache
