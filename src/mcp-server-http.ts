@@ -277,14 +277,15 @@ export async function main() {
   });
 
   // Start the server
-  console.log(`Ask262 MCP HTTP Server running on http://localhost:${PORT}`);
-  console.log(`MCP endpoint: POST http://localhost:${PORT}/mcp`);
-  console.log(`Health check: GET http://localhost:${PORT}/health`);
+  console.log(`Ask262 MCP HTTP Server running on http://0.0.0.0:${PORT}`);
+  console.log(`MCP endpoint: POST http://0.0.0.0:${PORT}/mcp`);
+  console.log(`Health check: GET http://0.0.0.0:${PORT}/health`);
   console.log(`Mode: Stateless JSON (non-streaming)`);
 
   serve({
     fetch: app.fetch,
     port: PORT,
+    hostname: "0.0.0.0", // Bind to all interfaces for container/Docker compatibility
   });
 }
 
