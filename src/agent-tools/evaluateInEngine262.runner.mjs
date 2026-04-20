@@ -139,14 +139,21 @@ process.stdin.on("end", async () => {
     const marks = ask262Debug.marks;
     console.error(`[RUNNER] Captured ${marks.length} marks`);
 
-    // Filter and group marks by important flag
-    const importantMarks = marks.filter((m) => m.important);
-    const otherMarks = marks.filter((m) => !m.important);
+    // Filter and group marks by important flag, then deduplicate
+    const importantIds = new Set(
+      marks.filter((m) => m.important).flatMap((m) => m.sectionIds),
+    );
+    const otherIds = new Set(
+      marks.filter((m) => !m.important).flatMap((m) => m.sectionIds),
+    );
+
+    // Remove duplicates from otherIds that exist in importantIds
+    const dedupedOtherIds = [...otherIds].filter((id) => !importantIds.has(id));
 
     // Output result as JSON
     const result = {
-      importantSections: importantMarks.flatMap((m) => m.sectionIds),
-      otherSections: otherMarks.flatMap((m) => m.sectionIds),
+      importantSections: [...importantIds],
+      otherSections: dedupedOtherIds,
       consoleOutput: consoleOutput,
     };
 
