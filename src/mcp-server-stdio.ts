@@ -147,10 +147,10 @@ export async function main() {
       },
     },
     async ({
-      sectionId,
+      sectionIds,
       recursive,
     }: GetSectionContentMCPInput): Promise<GetSectionContentMCPOutput> => {
-      const result = await getSectionContentTool({ sectionId, recursive });
+      const result = await getSectionContentTool({ sectionIds, recursive });
       return {
         content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
         structuredContent: result,
@@ -222,14 +222,14 @@ I'll use one of these orchestration patterns:
 PATTERN 1 - For "What happens when I run this code?" questions:
    - Use ask262Debug.startImportant() and ask262Debug.stopImportant() in the code to mark only important sections.
    - STEP 1: ask262_evaluate_in_engine262(code: markedCode)
-   - STEP 2: ask262_get_section_content(sectionId: importantSections[0], recursive: true)
+   - STEP 2: ask262_get_section_content(sectionIds: [importantSections[0]], recursive: true)
    - Explain which spec sections were hit and why
 
 PATTERN 2 - For "How does X work?" questions (e.g., "${question}"):
    - Flow A: Generate a specific code example and follow Pattern 1
    - Flow B: If no code example possible, search broadly:
      * STEP 1: ask262_search_spec_sections(query: relevant keywords from "${question}")
-     * STEP 2: ask262_get_section_content(sectionId: foundSectionId, recursive: true)
+     * STEP 2: ask262_get_section_content(sectionIds: [foundSectionId], recursive: true)
 
 I prefer Pattern 1 when possible as it provides exact spec sections through execution.
 

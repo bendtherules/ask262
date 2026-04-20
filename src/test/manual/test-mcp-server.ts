@@ -71,7 +71,7 @@ async function testMCPServer() {
     const contentResult = (await client.callTool({
       name: "ask262_get_section_content",
       arguments: {
-        sectionId: "sec-array.prototype.map",
+        sectionIds: ["sec-array.prototype.map"],
         recursive: false,
       },
     })) as GetSectionContentMCPOutput;
@@ -79,10 +79,13 @@ async function testMCPServer() {
       throw new Error(`Get section failed: ${contentResult.content[0]?.text}`);
     }
     const contentData = contentResult.structuredContent;
-    console.log(
-      `Content length: ${contentData.content?.length ?? 0} characters`,
-    );
-    console.log(`Sections visited: ${contentData.sectionCount ?? 0}`);
+    const totalContentLength =
+      contentData.sections?.reduce(
+        (sum: number, s: { content: string }) => sum + s.content.length,
+        0,
+      ) ?? 0;
+    console.log(`Content length: ${totalContentLength} characters`);
+    console.log(`Sections visited: ${contentData.sections?.length ?? 0}`);
     console.log("✓ Section content retrieved (isError: false)\n");
 
     // Test 4: Evaluate in engine262 - success case

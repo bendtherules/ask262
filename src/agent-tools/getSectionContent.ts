@@ -14,9 +14,18 @@ const sectionContentSchema = z.object({
   partIndex: z.number().optional(),
 });
 
-const getSectionContentOutputSchema = z.object({
+const sectionDataSchema = z.object({
+  sectionId: z.string(),
   content: z.string(),
-  sectionCount: z.number(),
+  found: z.boolean(),
+  error: z.string().optional(),
+  sectionTitle: z.string().optional(),
+  partIndex: z.number().optional(),
+  totalParts: z.number().optional(),
+});
+
+const getSectionContentOutputSchema = z.object({
+  sections: z.array(sectionDataSchema),
 });
 
 // #endregion
@@ -25,20 +34,21 @@ const getSectionContentOutputSchema = z.object({
 
 export const toolMetadata = {
   description:
-    "Retrieves all text chunks from a specific specification section by sectionid. " +
-    "Supports recursive fetching - if recursive=true and the section has children, it will fetch all descendants. " +
+    "Retrieves all text chunks from one or more specification sections by section IDs. " +
+    "Supports recursive fetching - if recursive=true and a section has children, it will fetch all descendants. " +
     "Use this to get complete content when you see 'Subsection available' or 'partial section' references.",
   args: {
-    sectionId: "The section ID (e.g., 'sec-if-statement') to fetch chunks for",
+    sectionIds:
+      "Array of section IDs (e.g., ['sec-if-statement', 'sec-for-statement']) to fetch chunks for",
     recursive:
       "If true, recursively fetches content from all child sections and their descendants. " +
-      "If false, only returns content from the specified section itself. " +
-      "Use false when you only need the specific section's content without subsections.",
+      "If false, only returns content from the specified sections themselves. " +
+      "Use false when you only need the specific sections' content without subsections.",
   },
 };
 
 export const inputSchema = z.object({
-  sectionId: z.string().describe(toolMetadata.args.sectionId),
+  sectionIds: z.array(z.string()).describe(toolMetadata.args.sectionIds),
   recursive: z.boolean().default(true).describe(toolMetadata.args.recursive),
 });
 
@@ -69,11 +79,19 @@ export type GetSectionContentInput = z.infer<typeof inputSchema>;
  */
 export function createGetSectionContentTool(table: Table) {
   return async ({
-    sectionId,
+    sectionIds,
     recursive,
   }: GetSectionContentInput): Promise<GetSectionContentOutput> => {
-    const allDocs: string[] = [];
-    const queue: string[] = [sectionId];
+    const sectionsData = new Map<
+      string,
+      {
+        content: string[];
+        title?: string;
+        partIndex?: number;
+        totalParts?: number;
+      }
+    >();
+    const queue: string[] = [...sectionIds];
     const visited = new Set<string>();
 
     while (queue.length > 0) {
@@ -84,7 +102,7 @@ export function createGetSectionContentTool(table: Table) {
       const results = await table
         .query()
         .where(`sectionid = '${currentId}'`)
-        .limit(100)
+        .limit(10)
         .toArray();
 
       // Sort by partindex to maintain order (nulls last for single-part sections)
@@ -99,10 +117,23 @@ export function createGetSectionContentTool(table: Table) {
           text?: string;
           childrensectionids?: string[];
           sectiontitle?: string;
+          partindex?: number;
+          totalparts?: number;
         };
 
         if (typedResult.text) {
-          allDocs.push(typedResult.text);
+          // Get or create section data
+          let section = sectionsData.get(currentId);
+          if (!section) {
+            section = {
+              content: [],
+              title: typedResult.sectiontitle,
+              partIndex: typedResult.partindex ?? undefined,
+              totalParts: typedResult.totalparts ?? undefined,
+            };
+            sectionsData.set(currentId, section);
+          }
+          section.content.push(typedResult.text);
         }
 
         // Add children to queue for recursive fetching only if recursive is true
@@ -116,9 +147,30 @@ export function createGetSectionContentTool(table: Table) {
       }
     }
 
+    // Build output array from all requested sections
+    // Missing sections are included with found: false and error message
+    const sections = sectionIds.map((id) => {
+      const data = sectionsData.get(id);
+      if (data) {
+        return {
+          sectionId: id,
+          content: data.content.join("\n\n"),
+          found: true,
+          sectionTitle: data.title,
+          partIndex: data.partIndex,
+          totalParts: data.totalParts,
+        };
+      }
+      return {
+        sectionId: id,
+        content: "",
+        found: false,
+        error: `Section '${id}' not found in database`,
+      };
+    });
+
     return {
-      content: allDocs.join("\n\n---\n\n"),
-      sectionCount: visited.size,
+      sections,
     };
   };
 }
