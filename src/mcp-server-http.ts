@@ -10,6 +10,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { serve } from "@hono/node-server";
 import * as lancedbSdk from "@lancedb/lancedb";
+import { mountInspector } from "@mcp-use/inspector";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js";
 import { Hono } from "hono";
@@ -250,6 +251,14 @@ export async function main() {
 
   // Health check endpoint
   app.get("/health", (c) => c.json({ status: "ok" }));
+
+  // MCP Inspector at root path - auto-connects to /mcp
+  // Use environment variable for public URL, fallback to localhost for dev
+  const mcpPublicUrl = process.env.MCP_PUBLIC_URL || `http://localhost:${PORT}`;
+  mountInspector(app, {
+    autoConnectUrl: `${mcpPublicUrl}/mcp`,
+    devMode: process.env.NODE_ENV !== "production",
+  });
 
   // MCP endpoint - handles both GET and POST
   app.all("/mcp", async (c) => {
