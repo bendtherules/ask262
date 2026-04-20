@@ -17,7 +17,6 @@ const searchSpecResultSchema = z.object({
     .describe("Vector distance from query (lower = more similar)"),
   partIndex: z.number().nullable(),
   totalParts: z.number().nullable(),
-  content: z.string(),
 });
 
 const searchSpecOutputSchema = z.object({
@@ -31,7 +30,8 @@ const searchSpecOutputSchema = z.object({
 export const toolMetadata = {
   description:
     "Vector search the ECMAScript specification for sections relevant to a query. " +
-    "Returns an array of sections with sectionId, sectionTitle, score, partIndex, totalParts, and content. " +
+    "Returns an array of section references (sectionId, sectionTitle, vectorDistance, partIndex, totalParts). " +
+    "Use ask262_get_section_content to retrieve the actual content for a section. " +
     "partIndex and totalParts indicate which chunk of a multi-part section this is " +
     "(0-indexed, partIndex+1/totalParts), null if single-part.",
   args: {
@@ -86,7 +86,6 @@ export function createSearchSpecSectionsTool(
         vectorDistance: Number(r._distance || 0),
         partIndex: (r.partindex as number | undefined) ?? null,
         totalParts: (r.totalparts as number | undefined) ?? null,
-        content: String(r.text || ""),
       }),
     );
 
