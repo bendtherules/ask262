@@ -10,6 +10,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { serve } from "@hono/node-server";
 import * as lancedbSdk from "@lancedb/lancedb";
+import { mountInspector } from "@mcp-use/inspector";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js";
 import { Hono } from "hono";
@@ -252,6 +253,7 @@ export async function main() {
   app.get("/health", (c) => c.json({ status: "ok" }));
 
   // MCP endpoint - handles both GET and POST
+  // Must be defined BEFORE inspector (which mounts at /) for proper route matching
   app.all("/mcp", async (c) => {
     // Get parsed body from Hono (automatic JSON parsing)
     let parsedBody: unknown;
@@ -278,6 +280,14 @@ export async function main() {
 
     // Return the Web Standard Response directly
     return response;
+  });
+
+  // MCP Inspector at root path - auto-connects to /mcp
+  // Mounted AFTER /mcp so specific routes take precedence
+  const mcpPublicUrl =  process.env.COOLIFY_URL || process.env.MCP_PUBLIC_URL || `http://localhost:${PORT}`;
+  mountInspector(app, {
+    autoConnectUrl: `${mcpPublicUrl}/mcp`,
+    devMode: process.env.NODE_ENV !== "production",
   });
 
   // Start the server
