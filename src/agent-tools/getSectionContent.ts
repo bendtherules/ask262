@@ -5,6 +5,8 @@
 
 import type { Table } from "@lancedb/lancedb";
 import { z } from "zod";
+import { LogOperation, logger } from "../lib/logger.js";
+import { withSpan } from "../lib/tracing.js";
 
 // #region Zod schemas (not exported)
 
@@ -21,6 +23,8 @@ const sectionDataSchema = z.object({
   error: z.string().optional(),
   sectionTitle: z.string().optional(),
   childrensectionids: z.array(z.string()).optional(),
+  partIndex: z.number().optional(),
+  totalParts: z.number().optional(),
 });
 
 const getSectionContentOutputSchema = z.object({
@@ -81,95 +85,133 @@ export function createGetSectionContentTool(table: Table) {
     sectionIds,
     recursive,
   }: GetSectionContentInput): Promise<GetSectionContentOutput> => {
-    const sectionsData = new Map<
-      string,
-      {
-        content: string[];
-        title?: string;
-        childrenSectionIds?: string[];
-      }
-    >();
-    const queue: string[] = [...sectionIds];
-    const visited = new Set<string>();
+    const log = await logger.forComponent("get-section-tool");
 
-    while (queue.length > 0) {
-      const currentId = queue.shift();
-      if (!currentId || visited.has(currentId)) continue;
-      visited.add(currentId);
-
-      const results = await table
-        .query()
-        .where(`sectionid = '${currentId}'`)
-        .limit(10)
-        .toArray();
-
-      // Sort by partindex to maintain order (nulls last for single-part sections)
-      const sortedResults = results.sort((a: unknown, b: unknown) => {
-        const aIndex = (a as { partindex?: number }).partindex ?? Infinity;
-        const bIndex = (b as { partindex?: number }).partindex ?? Infinity;
-        return aIndex - bIndex;
-      });
-
-      for (const result of sortedResults) {
-        const typedResult = result as {
-          text?: string;
-          childrensectionids?: unknown;
-          sectiontitle?: string;
-          partindex?: number;
-          totalparts?: number;
-        };
-
-        // Normalize childrensectionids: LanceDB may return an Apache Arrow Vector
-        // which is iterable but not a plain JS array.
-        const childrenIds = typedResult.childrensectionids
-          ? Array.from(typedResult.childrensectionids as Iterable<string>)
-          : undefined;
-
-        // Get or create section data
-        let section = sectionsData.get(currentId);
-        if (!section) {
-          section = {
-            content: [],
-            title: typedResult.sectiontitle,
-            childrenSectionIds: childrenIds,
-          };
-          sectionsData.set(currentId, section);
-        }
-
-        if (typedResult.text) {
-          section.content.push(typedResult.text);
-        }
-
-        // Add children to queue for recursive fetching only if recursive is true
-        if (recursive && childrenIds && childrenIds.length > 0) {
-          queue.push(...childrenIds);
-        }
-      }
-    }
-
-    // Build output array from all requested sections
-    // Missing sections are included with found: false and error message
-    const sections = sectionIds.map((id) => {
-      const data = sectionsData.get(id);
-      if (data) {
-        return {
-          sectionId: id,
-          content: data.content.join("\n\n"),
-          found: true,
-          sectionTitle: data.title,
-          childrensectionids: data.childrenSectionIds,
-        };
-      }
-      return {
-        sectionId: id,
-        content: "",
-        found: false,
-        error: `Section '${id}' not found in database`,
-      };
+    log.info(LogOperation.GET_SECTION_CONTENT, {
+      section_count: sectionIds.length,
+      recursive,
     });
 
-    return {
-      sections,
-    };
+    return await withSpan(
+      LogOperation.FETCHING_SECTION_CONTENT,
+      { section_count: sectionIds.length, recursive },
+      async () => {
+        const op = log.start(LogOperation.FETCHING_SECTION_CONTENT, {
+          section_ids: sectionIds,
+          recursive,
+        });
+
+        const sectionsData = new Map<
+          string,
+          {
+            content: string[];
+            title?: string;
+            childrenSectionIds?: string[];
+          }
+        >();
+        const queue: string[] = [...sectionIds];
+        const visited = new Set<string>();
+
+        try {
+          while (queue.length > 0) {
+            const currentId = queue.shift();
+            if (!currentId || visited.has(currentId)) continue;
+            visited.add(currentId);
+
+            const results = await table
+              .query()
+              .where(`sectionid = '${currentId}'`)
+              .limit(10)
+              .toArray();
+
+            // Sort by partindex to maintain order (nulls last for single-part sections)
+            const sortedResults = results.sort((a: unknown, b: unknown) => {
+              const aIndex = (a as { partindex?: number }).partindex ?? Infinity;
+              const bIndex = (b as { partindex?: number }).partindex ?? Infinity;
+              return aIndex - bIndex;
+            });
+
+            for (const result of sortedResults) {
+              const typedResult = result as {
+                text?: string;
+                childrensectionids?: unknown;
+                sectiontitle?: string;
+                partindex?: number;
+                totalparts?: number;
+              };
+
+              // Normalize childrensectionids: LanceDB may return an Apache Arrow Vector
+              // which is iterable but not a plain JS array.
+              const childrenIds = typedResult.childrensectionids
+                ? Array.from(typedResult.childrensectionids as Iterable<string>)
+                : undefined;
+
+              // Get or create section data
+              let section = sectionsData.get(currentId);
+              if (!section) {
+                section = {
+                  content: [],
+                  title: typedResult.sectiontitle,
+                  childrenSectionIds: childrenIds,
+                };
+                sectionsData.set(currentId, section);
+              }
+
+              if (typedResult.text) {
+                section.content.push(typedResult.text);
+              }
+
+              // Add children to queue for recursive fetching only if recursive is true
+              if (recursive && childrenIds && childrenIds.length > 0) {
+                queue.push(...childrenIds);
+              }
+            }
+          }
+
+          // Build output array from all requested sections
+          // Missing sections are included with found: false and error message
+          const sections = sectionIds.map((id) => {
+            const data = sectionsData.get(id);
+            if (data) {
+              return {
+                sectionId: id,
+                content: data.content.join("\n\n"),
+                found: true,
+                sectionTitle: data.title,
+                childrensectionids: data.childrenSectionIds,
+              };
+            }
+            return {
+              sectionId: id,
+              content: "",
+              found: false,
+              error: `Section '${id}' not found in database`,
+            };
+          });
+          
+          const totalSectionsFetched = sectionsData.size;
+          const totalContentLength = sections.reduce(
+            (sum, s) => sum + s.content.length,
+            0,
+          );
+
+          op.end({
+            total_sections: totalSectionsFetched,
+            total_content_length: totalContentLength,
+            recursive,
+          });
+
+          return { sections };
+        } catch (err) {
+          const error = err instanceof Error ? err : new Error(String(err));
+          log.error(
+            LogOperation.FETCHING_SECTION_CONTENT,
+            { section_ids: sectionIds },
+            error,
+          );
+          throw err;
+        }
+      },
+    );
   };
 }

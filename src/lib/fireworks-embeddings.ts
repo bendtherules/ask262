@@ -1,4 +1,5 @@
 import { Embeddings, type EmbeddingsParams } from "@langchain/core/embeddings";
+import { LogOperation, logger } from "./logger.js";
 
 /**
  * Interface for FireworksEmbeddings parameters.
@@ -97,14 +98,36 @@ export class FireworksEmbeddings extends Embeddings {
       return [];
     }
 
+    const log = await logger.forComponent("fireworks-embeddings");
+    const op = log.start(LogOperation.EMBEDDING_DOCUMENTS, {
+      total_documents: documents.length,
+      batch_size: this.batchSize,
+      model: this.modelName,
+    });
+
     const allEmbeddings: number[][] = [];
+    const totalBatches = Math.ceil(documents.length / this.batchSize);
 
     // Process in batches
     for (let i = 0; i < documents.length; i += this.batchSize) {
+      const batchNum = Math.floor(i / this.batchSize) + 1;
       const batch = documents.slice(i, i + this.batchSize);
+
+      log.debug(LogOperation.PROCESSING_EMBEDDING_BATCH, {
+        batch_num: batchNum,
+        total_batches: totalBatches,
+        batch_size: batch.length,
+      });
+
       const batchEmbeddings = await this.embedBatchWithRetry(batch);
       allEmbeddings.push(...batchEmbeddings);
     }
+
+    op.end({
+      total_documents: documents.length,
+      batches: totalBatches,
+      embeddings_generated: allEmbeddings.length,
+    });
 
     return allEmbeddings;
   }
@@ -116,7 +139,15 @@ export class FireworksEmbeddings extends Embeddings {
     documents: string[],
     attempt = 1,
   ): Promise<number[][]> {
+    const log = await logger.forComponent("fireworks-embeddings");
+
     try {
+      log.debug(LogOperation.PROCESSING_EMBEDDING_BATCH, {
+        batch_size: documents.length,
+        attempt,
+        model: this.modelName,
+      });
+
       return await this.embedBatch(documents);
     } catch (error) {
       // Check if it's a rate limit error (429)
@@ -126,12 +157,21 @@ export class FireworksEmbeddings extends Embeddings {
 
       if (isRateLimit && attempt < this.maxRetries) {
         const delay = this.initialRetryDelayMs * 2 ** (attempt - 1);
-        console.error(
-          `[Fireworks] Rate limit hit. Waiting ${delay}ms before retry ${attempt}/${this.maxRetries}...`,
-        );
+        log.warn(LogOperation.RETRYING_RATE_LIMIT, {
+          attempt,
+          max_retries: this.maxRetries,
+          delay_ms: delay,
+          batch_size: documents.length,
+        });
         await sleep(delay);
         return this.embedBatchWithRetry(documents, attempt + 1);
       }
+
+      log.error(
+        LogOperation.PROCESSING_EMBEDDING_BATCH,
+        { batch_size: documents.length, attempt, is_rate_limit: isRateLimit },
+        error instanceof Error ? error : new Error(String(error)),
+      );
 
       // Fail fast for other errors or if retries exhausted
       throw error;

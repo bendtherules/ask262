@@ -36,6 +36,8 @@ import {
 } from "./agent-tools/index.js";
 import { STORAGE_DIR as STORAGE_DIR_REL } from "./constants.js";
 import { createEmbeddings } from "./lib/embeddings-factory.js";
+import { LogOperation, logger } from "./lib/logger.js";
+import { createProcessScopedTrace, withSpanContext } from "./lib/tracing.js";
 
 // Resolve storage path relative to this script's directory
 const __filename = fileURLToPath(import.meta.url);
@@ -88,6 +90,17 @@ export interface SearchSpecMCPOutput extends McpToolOutputBase {
 const embeddings = createEmbeddings();
 
 export async function main() {
+  // Initialize stdio server logger
+  const log = await logger.forComponent("stdio-server");
+
+  // Create process-scoped trace ID for this session
+  const sessionTraceId = createProcessScopedTrace();
+
+  log.info(LogOperation.SERVER_STARTED, {
+    transport: "stdio",
+    trace_id: sessionTraceId,
+  });
+
   // Connect to LanceDB
   const db = await lancedbSdk.connect(STORAGE_DIR);
   const table = await db.openTable("spec_vectors");
@@ -124,12 +137,19 @@ export async function main() {
       },
     },
     async ({ query }: SearchSpecMCPInput): Promise<SearchSpecMCPOutput> => {
-      const result = await searchSpecTool({ query });
-      return {
-        content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
-        structuredContent: result,
-        isError: false,
-      };
+      return await withSpanContext(
+        sessionTraceId,
+        "vector_search",
+        { tool: searchSpecToolName, query },
+        async () => {
+          const result = await searchSpecTool({ query });
+          return {
+            content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
+            structuredContent: result,
+            isError: false,
+          };
+        },
+      );
     },
   );
 
@@ -150,12 +170,19 @@ export async function main() {
       sectionIds,
       recursive,
     }: GetSectionContentMCPInput): Promise<GetSectionContentMCPOutput> => {
-      const result = await getSectionContentTool({ sectionIds, recursive });
-      return {
-        content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
-        structuredContent: result,
-        isError: false,
-      };
+      return await withSpanContext(
+        sessionTraceId,
+        "section_fetch",
+        { tool: sectionContentToolName, section_count: sectionIds.length },
+        async () => {
+          const result = await getSectionContentTool({ sectionIds, recursive });
+          return {
+            content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
+            structuredContent: result,
+            isError: false,
+          };
+        },
+      );
     },
   );
 
@@ -173,14 +200,21 @@ export async function main() {
       },
     },
     async ({ code }: EvaluateToolMCPInput): Promise<EvaluateToolMCPOutput> => {
-      const result = await evaluateTool({ code });
-      const isError = result.error !== undefined;
-      const text = isError ? result.error : JSON.stringify(result, null, 2);
-      return {
-        content: [{ type: "text", text }],
-        structuredContent: result,
-        isError,
-      };
+      return await withSpanContext(
+        sessionTraceId,
+        "code_execution",
+        { tool: evaluateToolName, code_length: code.length },
+        async () => {
+          const result = await evaluateTool({ code });
+          const isError = result.error !== undefined;
+          const text = isError ? result.error : JSON.stringify(result, null, 2);
+          return {
+            content: [{ type: "text", text }],
+            structuredContent: result,
+            isError,
+          };
+        },
+      );
     },
   );
 
@@ -248,6 +282,18 @@ Key principles:
   await server.connect(transport);
 
   console.error("Ask262 MCP Server running on stdio");
+
+  // Handle graceful shutdown
+  const shutdown = (signal: string) => {
+    log.info(LogOperation.SERVER_STOPPED, {
+      signal,
+      trace_id: sessionTraceId,
+    });
+    process.exit(0);
+  };
+
+  process.on("SIGTERM", () => shutdown("SIGTERM"));
+  process.on("SIGINT", () => shutdown("SIGINT"));
 }
 
 main().catch((error) => {
