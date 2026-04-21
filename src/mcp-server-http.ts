@@ -284,7 +284,7 @@ export async function main() {
 
   // MCP Inspector at root path - auto-connects to /mcp
   // Mounted AFTER /mcp so specific routes take precedence
-  const mcpPublicUrl = process.env.MCP_PUBLIC_URL || `http://localhost:${PORT}`;
+  const mcpPublicUrl =  process.env.COOLIFY_URL || process.env.MCP_PUBLIC_URL || `http://localhost:${PORT}`;
   mountInspector(app, {
     autoConnectUrl: `${mcpPublicUrl}/mcp`,
     devMode: process.env.NODE_ENV !== "production",
