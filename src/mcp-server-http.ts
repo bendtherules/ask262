@@ -252,15 +252,8 @@ export async function main() {
   // Health check endpoint
   app.get("/health", (c) => c.json({ status: "ok" }));
 
-  // MCP Inspector at root path - auto-connects to /mcp
-  // Use environment variable for public URL, fallback to localhost for dev
-  const mcpPublicUrl = process.env.MCP_PUBLIC_URL || `http://localhost:${PORT}`;
-  mountInspector(app, {
-    autoConnectUrl: `${mcpPublicUrl}/mcp`,
-    devMode: process.env.NODE_ENV !== "production",
-  });
-
   // MCP endpoint - handles both GET and POST
+  // Must be defined BEFORE inspector (which mounts at /) for proper route matching
   app.all("/mcp", async (c) => {
     // Get parsed body from Hono (automatic JSON parsing)
     let parsedBody: unknown;
@@ -287,6 +280,14 @@ export async function main() {
 
     // Return the Web Standard Response directly
     return response;
+  });
+
+  // MCP Inspector at root path - auto-connects to /mcp
+  // Mounted AFTER /mcp so specific routes take precedence
+  const mcpPublicUrl = process.env.MCP_PUBLIC_URL || `http://localhost:${PORT}`;
+  mountInspector(app, {
+    autoConnectUrl: `${mcpPublicUrl}/mcp`,
+    devMode: process.env.NODE_ENV !== "production",
   });
 
   // Start the server
