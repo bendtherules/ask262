@@ -46,6 +46,10 @@ Use the hosted MCP server without any local setup:
 }
 ```
 
+**Experiment with the Inspector:**
+
+Visit `https://ask262.bendtherules.in/` to access the MCP Inspector UI. This provides an interactive interface to test all available tools with custom inputs.
+
 ## Local Installation
 
 ### Prerequisites
@@ -156,6 +160,16 @@ bun run ask262-http # start HTTP server
 ```bash
 bun run ask262-http # start HTTP server
 ```
+
+**HTTP Server Endpoints:**
+
+| Endpoint | Description |
+|----------|-------------|
+| `GET /health` | Health check |
+| `GET/POST /mcp` | MCP protocol endpoint |
+| `GET /` | MCP Inspector UI (auto-connects to /mcp) |
+
+*Note: `/mcp` is defined before the inspector's catch-all `/` route to ensure proper request handling.*
 
 ## Testing
 
