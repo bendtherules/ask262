@@ -20,8 +20,7 @@ const sectionDataSchema = z.object({
   found: z.boolean(),
   error: z.string().optional(),
   sectionTitle: z.string().optional(),
-  partIndex: z.number().optional(),
-  totalParts: z.number().optional(),
+  childrensectionids: z.array(z.string()).optional(),
 });
 
 const getSectionContentOutputSchema = z.object({
@@ -87,8 +86,7 @@ export function createGetSectionContentTool(table: Table) {
       {
         content: string[];
         title?: string;
-        partIndex?: number;
-        totalParts?: number;
+        childrenSectionIds?: string[];
       }
     >();
     const queue: string[] = [...sectionIds];
@@ -121,18 +119,18 @@ export function createGetSectionContentTool(table: Table) {
           totalparts?: number;
         };
 
+        // Get or create section data
+        let section = sectionsData.get(currentId);
+        if (!section) {
+          section = {
+            content: [],
+            title: typedResult.sectiontitle,
+            childrenSectionIds: typedResult.childrensectionids,
+          };
+          sectionsData.set(currentId, section);
+        }
+
         if (typedResult.text) {
-          // Get or create section data
-          let section = sectionsData.get(currentId);
-          if (!section) {
-            section = {
-              content: [],
-              title: typedResult.sectiontitle,
-              partIndex: typedResult.partindex ?? undefined,
-              totalParts: typedResult.totalparts ?? undefined,
-            };
-            sectionsData.set(currentId, section);
-          }
           section.content.push(typedResult.text);
         }
 
@@ -157,8 +155,7 @@ export function createGetSectionContentTool(table: Table) {
           content: data.content.join("\n\n"),
           found: true,
           sectionTitle: data.title,
-          partIndex: data.partIndex,
-          totalParts: data.totalParts,
+          childrensectionids: data.childrenSectionIds,
         };
       }
       return {
