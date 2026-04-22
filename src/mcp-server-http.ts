@@ -238,7 +238,7 @@ export async function main() {
     "*",
     cors({
       origin: "*",
-      allowMethods: ["GET", "POST", "DELETE", "OPTIONS"],
+      allowMethods: ["GET", "POST", "HEAD", "DELETE", "OPTIONS"],
       allowHeaders: [
         "Content-Type",
         "mcp-session-id",
@@ -252,7 +252,19 @@ export async function main() {
   // Health check endpoint
   app.get("/health", (c) => c.json({ status: "ok" }));
 
-  // MCP endpoint - handles both GET and POST
+  // MCP HEAD endpoint - health check / availability probe
+  // Must be defined BEFORE app.all for proper route matching (specific routes first)
+  app.on("HEAD", "/mcp", (_c) => {
+    return new Response(null, {
+      status: 200,
+      headers: {
+        "Content-Type": "application/json",
+        "mcp-protocol-version": "2025-03-26",
+      },
+    });
+  });
+
+  // MCP endpoint - handles GET and POST
   // Must be defined BEFORE inspector (which mounts at /) for proper route matching
   app.all("/mcp", async (c) => {
     // Get parsed body from Hono (automatic JSON parsing)
