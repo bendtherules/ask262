@@ -6,6 +6,8 @@
 import type { Table } from "@lancedb/lancedb";
 import type { Embeddings } from "@langchain/core/embeddings";
 import { z } from "zod";
+import { LogOperation, logger } from "../lib/logger.js";
+import { withSpan } from "../lib/tracing.js";
 
 // #region Zod schemas (not exported)
 
@@ -72,23 +74,60 @@ export function createSearchSpecSectionsTool(
   embeddings: Embeddings,
 ) {
   return async ({ query }: SearchSpecInput): Promise<SearchSpecOutput> => {
-    // Generate embedding for the query
-    const queryVector = await embeddings.embedQuery(query);
+    const log = await logger.forComponent("search-tool");
 
-    // Search using LanceDB directly, limit to top 5 results
-    const results = await table.search(queryVector).limit(5).toArray();
+    log.info(LogOperation.SEARCH_SPEC_SECTIONS, { query });
 
-    // Return documents with metadata as structured objects
-    const output: SearchSpecResult[] = results.map(
-      (r: Record<string, unknown>) => ({
-        sectionId: String(r.sectionid || "unknown"),
-        sectionTitle: String(r.sectiontitle || "unknown"),
-        vectorDistance: Number(r._distance || 0),
-        partIndex: (r.partindex as number | undefined) ?? null,
-        totalParts: (r.totalparts as number | undefined) ?? null,
-      }),
+    return await withSpan(
+      LogOperation.SEARCHING_SPEC_SECTIONS,
+      { query },
+      async () => {
+        const op = log.start(LogOperation.SEARCHING_SPEC_SECTIONS, { query });
+
+        const SEARCH_LIMIT = 5;
+
+        try {
+          // Generate embedding for the query (timed operation)
+          const embedOp = log.start(LogOperation.GENERATING_EMBEDDING, {
+            query,
+          });
+          const queryVector = await embeddings.embedQuery(query);
+          embedOp.end();
+
+          // Search using LanceDB directly, limit to top results (timed operation)
+          const searchOp = log.start(LogOperation.QUERYING_LANCEDB, {
+            query,
+            limit: SEARCH_LIMIT,
+          });
+          const results = await table
+            .search(queryVector)
+            .limit(SEARCH_LIMIT)
+            .toArray();
+          searchOp.end({ results_found: results.length });
+
+          // Return documents with metadata as structured objects
+          const output: SearchSpecResult[] = results.map(
+            (r: Record<string, unknown>) => ({
+              sectionId: String(r.sectionid || "unknown"),
+              sectionTitle: String(r.sectiontitle || "unknown"),
+              vectorDistance: Number(r._distance || 0),
+              partIndex: (r.partindex as number | undefined) ?? null,
+              totalParts: (r.totalparts as number | undefined) ?? null,
+            }),
+          );
+
+          op.end({
+            results: output.length,
+            section_ids: output.map((r) => r.sectionId),
+          });
+
+          return { results: output };
+        } catch (err) {
+          const error = err instanceof Error ? err : new Error(String(err));
+          log.error(LogOperation.SEARCHING_SPEC_SECTIONS, { query }, error);
+          throw err;
+        }
+      },
     );
-
-    return { results: output };
   };
 }

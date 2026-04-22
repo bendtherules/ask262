@@ -35,6 +35,8 @@ import {
 } from "./agent-tools/index.js";
 import { DEFAULT_PORT, STORAGE_DIR as STORAGE_DIR_REL } from "./constants.js";
 import { createEmbeddings } from "./lib/embeddings-factory.js";
+import { LogOperation, logger } from "./lib/logger.js";
+import { withSpan } from "./lib/tracing.js";
 
 // Resolve storage path relative to this script's directory
 const __filename = fileURLToPath(import.meta.url);
@@ -88,11 +90,7 @@ async function createMcpServer() {
       },
     },
     async ({ query }) => {
-      console.log(`[TOOL] ${searchSpecToolName}: query="${query}"`);
       const result = await searchSpecTool({ query });
-      console.log(
-        `[TOOL] ${searchSpecToolName}: ${result.results.length} results`,
-      );
       return {
         content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
         structuredContent: result,
@@ -115,17 +113,7 @@ async function createMcpServer() {
       },
     },
     async ({ sectionIds, recursive }) => {
-      console.log(
-        `[TOOL] ${sectionContentToolName}: sectionIds=[${sectionIds.map((id: string) => `"${id}"`).join(", ")}] recursive=${recursive}`,
-      );
       const result = await getSectionContentTool({ sectionIds, recursive });
-      const totalContentLength = result.sections.reduce(
-        (sum: number, s: { content: string }) => sum + s.content.length,
-        0,
-      );
-      console.log(
-        `[TOOL] ${sectionContentToolName}: ${totalContentLength} chars, ${result.sections.length} sections`,
-      );
       return {
         content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
         structuredContent: result,
@@ -148,16 +136,8 @@ async function createMcpServer() {
       },
     },
     async ({ code }) => {
-      console.log(`[TOOL] ${evaluateToolName}: code length=${code.length}`);
       const result = await evaluateTool({ code });
       const isError = result.error !== undefined;
-      if (isError) {
-        console.log(`[TOOL] ${evaluateToolName}: error - ${result.error}`);
-      } else {
-        console.log(
-          `[TOOL] ${evaluateToolName}: ${result.importantSections.length} important, ${result.otherSections.length} other sections`,
-        );
-      }
       const text = isError ? result.error : JSON.stringify(result, null, 2);
       return {
         content: [{ type: "text", text }],
@@ -230,6 +210,9 @@ Key principles:
 }
 
 export async function main() {
+  // Initialize HTTP server logger
+  const log = await logger.forComponent("http-server");
+
   // Create Hono app
   const app = new Hono();
 
@@ -269,6 +252,13 @@ export async function main() {
   // MCP endpoint - handles GET and POST (HEAD is handled by middleware above)
   // Must be defined BEFORE inspector (which mounts at /) for proper route matching
   app.on(["GET", "POST"], "/mcp", async (c) => {
+    // Get client IP from headers or connection
+    const clientIp =
+      c.req.header("x-forwarded-for") || c.req.header("x-real-ip") || "unknown";
+
+    // Get trace ID from request header or create new
+    const traceId = c.req.header("x-request-id") || undefined;
+
     // Get parsed body from Hono (automatic JSON parsing)
     let parsedBody: unknown;
     if (c.req.method === "POST") {
@@ -280,20 +270,48 @@ export async function main() {
       }
     }
 
-    // Create fresh server and transport for each request (stateless mode)
-    const server = await createMcpServer();
-    const transport = new WebStandardStreamableHTTPServerTransport({
-      sessionIdGenerator: undefined, // Stateless mode
-      enableJsonResponse: true, // Use JSON responses instead of SSE streaming
-    });
-    await server.connect(transport);
+    // Handle request within trace context (passing trace ID from header if available)
+    return await withSpan(
+      LogOperation.HANDLING_MCP_HTTP_REQUEST,
+      { method: c.req.method, client_ip: clientIp },
+      async () => {
+        const op = log.start(LogOperation.HANDLING_MCP_HTTP_REQUEST, {
+          method: c.req.method,
+          client_ip: clientIp,
+        });
 
-    // Use Web Standard handleRequest method
-    // Hono's c.req.raw is a Web Standard Request
-    const response = await transport.handleRequest(c.req.raw, { parsedBody });
+        try {
+          // Create fresh server and transport for each request (stateless mode)
+          const server = await createMcpServer();
+          const transport = new WebStandardStreamableHTTPServerTransport({
+            sessionIdGenerator: undefined, // Stateless mode
+            enableJsonResponse: true, // Use JSON responses instead of SSE streaming
+          });
+          await server.connect(transport);
 
-    // Return the Web Standard Response directly
-    return response;
+          // Use Web Standard handleRequest method
+          // Hono's c.req.raw is a Web Standard Request
+          const response = await transport.handleRequest(c.req.raw, {
+            parsedBody,
+          });
+
+          op.end({ status: "success" });
+
+          // Return the Web Standard Response directly
+          return response;
+        } catch (err) {
+          const error = err instanceof Error ? err : new Error(String(err));
+          log.error(
+            LogOperation.HANDLING_MCP_HTTP_REQUEST,
+            { status: "error" },
+            error,
+          );
+          op.end({ status: "error", error: error.message });
+          throw err;
+        }
+      },
+      traceId,
+    );
   });
 
   // MCP Inspector at root path - auto-connects to /mcp
@@ -308,16 +326,32 @@ export async function main() {
   });
 
   // Start the server
-  console.log(`Ask262 MCP HTTP Server running on http://0.0.0.0:${PORT}`);
-  console.log(`MCP endpoint: POST http://0.0.0.0:${PORT}/mcp`);
-  console.log(`Health check: GET http://0.0.0.0:${PORT}/health`);
-  console.log(`Mode: Stateless JSON (non-streaming)`);
+  log.info(LogOperation.SERVER_STARTED, {
+    port: PORT,
+    transport: "http",
+    mode: "stateless-json",
+    endpoints: ["/mcp", "/health"],
+  });
+
+  // Minimal console output for startup visibility
+  console.error(`Ask262 MCP HTTP Server running on http://0.0.0.0:${PORT}`);
+  console.error(`MCP endpoint: POST http://0.0.0.0:${PORT}/mcp`);
+  console.error(`Mode: Stateless JSON (non-streaming)`);
 
   serve({
     fetch: app.fetch,
     port: PORT,
     hostname: "0.0.0.0", // Bind to all interfaces for container/Docker compatibility
   });
+
+  // Handle graceful shutdown
+  const shutdown = (signal: string) => {
+    log.info(LogOperation.SERVER_STOPPED, { signal });
+    process.exit(0);
+  };
+
+  process.on("SIGTERM", () => shutdown("SIGTERM"));
+  process.on("SIGINT", () => shutdown("SIGINT"));
 }
 
 main().catch((error) => {

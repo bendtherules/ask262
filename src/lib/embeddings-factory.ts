@@ -66,6 +66,9 @@ export function createEmbeddings(provider?: EmbeddingProvider): Embeddings {
   }
 }
 
+// Provider logging is done via console.error to stderr
+// Detailed embedding operation logging is in the individual embedding classes
+
 /**
  * Get the currently configured embedding provider.
  *

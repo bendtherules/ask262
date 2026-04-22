@@ -1,0 +1,14 @@
+# coolify.yaml - Coolify deployment configuration
+version: 1
+
+services:
+  - name: ask262
+
+cronjobs:
+  - name: "log-rotation"
+    schedule: "*/5 * * * *"  # Every 5 minutes
+    command: "logrotate -f /app/logrotate.conf 2>/dev/null || true"
+
+  - name: "log-cleanup"
+    schedule: "0 0 * * *"  # Daily at midnight
+    command: "find ${ASK262_LOG_DIR:-/app/logs} -name 'ask262.jsonl.*' -mtime +${ASK262_LOG_RETENTION_DAYS:-30} -delete 2>/dev/null || true"

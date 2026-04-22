@@ -9,6 +9,8 @@ import { spawn } from "node:child_process";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { z } from "zod";
+import { LogOperation, logger } from "../lib/logger.js";
+import { withSpan } from "../lib/tracing.js";
 
 // #region Zod schemas (not exported)
 
@@ -232,17 +234,69 @@ export function createEvaluateInEngine262Tool(
   timeoutMs = DEFAULT_EXECUTION_TIMEOUT_MS,
 ) {
   return async ({ code }: EvaluateToolInput): Promise<EvaluateToolOutput> => {
-    try {
-      // Execute code in isolated child process
-      const resultJson = await executeInChildProcess(code, timeoutMs);
+    const log = await logger.forComponent("engine262-runner");
 
-      // Parse the result
-      return JSON.parse(resultJson) as EvaluateToolOutput;
-    } catch (error) {
-      // Return error result
-      return {
-        error: error instanceof Error ? error.message : String(error),
-      };
-    }
+    log.info(LogOperation.EVALUATE_IN_ENGINE262, { code_length: code.length });
+
+    // Truncate code for logging if too long (>500 chars)
+    const codeForLog =
+      code.length > 500
+        ? `${code.substring(0, 500)}... (${code.length - 500} more chars)`
+        : code;
+
+    // Only the main evaluating_in_engine262 span logs the full code
+    return await withSpan(
+      LogOperation.EVALUATING_IN_ENGINE262,
+      { code: codeForLog, code_length: code.length, timeout_ms: timeoutMs },
+      async () => {
+        const op = log.start(LogOperation.EVALUATING_IN_ENGINE262, {
+          code: codeForLog,
+          code_length: code.length,
+          timeout_ms: timeoutMs,
+        });
+
+        try {
+          // Child operations don't need to log the code - it's in the parent span context
+          log.debug(LogOperation.SPAWNING_CHILD_PROCESS, {
+            timeout_ms: timeoutMs,
+          });
+
+          // Execute code in isolated child process
+          const resultJson = await executeInChildProcess(code, timeoutMs);
+
+          // Parse the result
+          const result = JSON.parse(resultJson) as EvaluateToolOutput;
+
+          if ("error" in result && result.error) {
+            log.warn(LogOperation.ENGINE262_ABRUPT_COMPLETION, {
+              error: result.error,
+            });
+            op.end({ status: "error", error: result.error });
+          } else {
+            const successResult = result as EvaluateSuccessOutput;
+            // op.end logs the final completion with all metrics and duration
+            op.end({
+              status: "success",
+              important_sections: successResult.importantSections.length,
+              other_sections: successResult.otherSections.length,
+              console_entries: successResult.consoleOutput.length,
+            });
+          }
+
+          return result;
+        } catch (err) {
+          const error = err instanceof Error ? err : new Error(String(err));
+          log.error(
+            LogOperation.EVALUATING_IN_ENGINE262,
+            { code_length: code.length },
+            error,
+          );
+          op.end({ status: "exception", error: error.message });
+          return {
+            error: error.message,
+          };
+        }
+      },
+    );
   };
 }

@@ -4,6 +4,8 @@
  */
 
 import { RERANKER_MODEL } from "../constants.js";
+import { LogOperation, logger } from "../lib/logger.js";
+import { withSpan } from "../lib/tracing.js";
 
 const OLLAMA_HOST = process.env.OLLAMA_HOST || "http://localhost:11434";
 
@@ -23,46 +25,91 @@ export async function rerankDocuments<T extends { pageContent: string }>(
   query: string,
   documents: T[],
 ): Promise<RerankResult<T>[]> {
-  try {
-    const response = await fetch(`${OLLAMA_HOST}/api/rerank`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
+  const log = await logger.forComponent("reranker");
+
+  log.info(LogOperation.RERANKING_DOCUMENTS, {
+    document_count: documents.length,
+  });
+
+  return await withSpan(
+    LogOperation.RERANKING_DOCUMENTS,
+    { document_count: documents.length },
+    async () => {
+      const op = log.start(LogOperation.RERANKING_DOCUMENTS, {
+        document_count: documents.length,
         model: RERANKER_MODEL,
-        query: query,
-        documents: documents.map((d) => d.pageContent),
-      }),
-    });
+      });
 
-    if (!response.ok) {
-      console.warn(
-        `Reranker API failed: ${response.statusText}. Returning all documents.`,
-      );
-      return documents.map((doc, i) => ({
-        document: doc,
-        score: 1.0,
-        index: i,
-      }));
-    }
+      try {
+        const response = await fetch(`${OLLAMA_HOST}/api/rerank`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            model: RERANKER_MODEL,
+            query: query,
+            documents: documents.map((d) => d.pageContent),
+          }),
+        });
 
-    const data = await response.json();
-    if (!data.results || !Array.isArray(data.results)) {
-      return documents.map((doc, i) => ({
-        document: doc,
-        score: 1.0,
-        index: i,
-      }));
-    }
+        if (!response.ok) {
+          log.warn("reranker_api_failed", {
+            status: response.status,
+            statusText: response.statusText,
+          });
+          op.end({
+            status: "api_failed",
+            fallback: true,
+            document_count: documents.length,
+          });
+          return documents.map((doc, i) => ({
+            document: doc,
+            score: 1.0,
+            index: i,
+          }));
+        }
 
-    return data.results.map(
-      (result: { index: number; relevance_score: number }) => ({
-        document: documents[result.index],
-        score: result.relevance_score,
-        index: result.index,
-      }),
-    );
-  } catch (error) {
-    console.warn(`Reranker error: ${error}. Returning all documents.`);
-    return documents.map((doc, i) => ({ document: doc, score: 1.0, index: i }));
-  }
+        const data = await response.json();
+        if (!data.results || !Array.isArray(data.results)) {
+          log.warn("reranker_invalid_response", { response: data });
+          op.end({
+            status: "invalid_response",
+            fallback: true,
+            document_count: documents.length,
+          });
+          return documents.map((doc, i) => ({
+            document: doc,
+            score: 1.0,
+            index: i,
+          }));
+        }
+
+        // op.end logs the final success with all metrics
+        op.end({
+          status: "success",
+          results_count: data.results.length,
+        });
+
+        return data.results.map(
+          (result: { index: number; relevance_score: number }) => ({
+            document: documents[result.index],
+            score: result.relevance_score,
+            index: result.index,
+          }),
+        );
+      } catch (error) {
+        const err = error instanceof Error ? error : new Error(String(error));
+        log.warn("reranker_error", { error: err.message });
+        op.end({
+          status: "error",
+          error: err.message,
+          fallback: true,
+        });
+        return documents.map((doc, i) => ({
+          document: doc,
+          score: 1.0,
+          index: i,
+        }));
+      }
+    },
+  );
 }

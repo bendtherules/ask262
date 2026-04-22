@@ -21,6 +21,10 @@ coverage/
 # Test output
 .idea/
 *.log
+
+# Logs directory
+/logs/
+*.jsonl
 # Optional: package lock files if you prefer not to commit them
 # package-lock.json
 # yarn.lock
