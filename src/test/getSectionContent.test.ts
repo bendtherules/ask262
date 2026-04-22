@@ -81,16 +81,15 @@ describe("getSectionContent", () => {
     expect(result.sections.length).toBe(0);
   });
 
-  test("should include partIndex and totalParts when available", async () => {
+  test("should include childrensectionids when available", async () => {
     const result = await getContentTool({
-      sectionIds: ["sec-try-statement"],
+      sectionIds: ["sec-catch-clause"],
       recursive: false,
     });
 
     const section = result.sections[0];
-    if (section.found && section.partIndex !== undefined) {
-      expect(section.partIndex).toBeNumber();
-      expect(section.totalParts).toBeNumber();
+    if (section.found && section.childrensectionids !== undefined) {
+      expect(section.childrensectionids).toBeArray();
     }
   });
 

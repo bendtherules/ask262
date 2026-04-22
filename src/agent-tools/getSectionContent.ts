@@ -113,11 +113,17 @@ export function createGetSectionContentTool(table: Table) {
       for (const result of sortedResults) {
         const typedResult = result as {
           text?: string;
-          childrensectionids?: string[];
+          childrensectionids?: unknown;
           sectiontitle?: string;
           partindex?: number;
           totalparts?: number;
         };
+
+        // Normalize childrensectionids: LanceDB may return an Apache Arrow Vector
+        // which is iterable but not a plain JS array.
+        const childrenIds = typedResult.childrensectionids
+          ? Array.from(typedResult.childrensectionids as Iterable<string>)
+          : undefined;
 
         // Get or create section data
         let section = sectionsData.get(currentId);
@@ -125,7 +131,7 @@ export function createGetSectionContentTool(table: Table) {
           section = {
             content: [],
             title: typedResult.sectiontitle,
-            childrenSectionIds: typedResult.childrensectionids,
+            childrenSectionIds: childrenIds,
           };
           sectionsData.set(currentId, section);
         }
@@ -135,12 +141,8 @@ export function createGetSectionContentTool(table: Table) {
         }
 
         // Add children to queue for recursive fetching only if recursive is true
-        if (
-          recursive &&
-          typedResult.childrensectionids &&
-          Array.isArray(typedResult.childrensectionids)
-        ) {
-          queue.push(...typedResult.childrensectionids);
+        if (recursive && childrenIds && childrenIds.length > 0) {
+          queue.push(...childrenIds);
         }
       }
     }
