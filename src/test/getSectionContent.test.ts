@@ -108,6 +108,22 @@ describe("getSectionContent", () => {
     expect(requestedSection?.found).toBe(true);
   });
 
+  test("should include recursively fetched child sections in output", async () => {
+    const result = await getContentTool({
+      sectionIds: ["sec-catch-clause"],
+      recursive: true,
+    });
+
+    // sec-catch-clause has sec-try-statement as a child in mock data
+    const childSection = result.sections.find(
+      (s) => s.sectionId === "sec-try-statement",
+    );
+    expect(childSection).toBeDefined();
+    expect(childSection?.found).toBe(true);
+    expect(childSection?.content).toBeString();
+    expect(childSection?.content.length).toBeGreaterThan(0);
+  });
+
   test("should preserve input order in output", async () => {
     const sectionIds = ["sec-for-statement", "sec-if-statement"];
     const result = await getContentTool({

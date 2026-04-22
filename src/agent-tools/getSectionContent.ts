@@ -126,8 +126,10 @@ export function createGetSectionContentTool(table: Table) {
 
             // Sort by partindex to maintain order (nulls last for single-part sections)
             const sortedResults = results.sort((a: unknown, b: unknown) => {
-              const aIndex = (a as { partindex?: number }).partindex ?? Infinity;
-              const bIndex = (b as { partindex?: number }).partindex ?? Infinity;
+              const aIndex =
+                (a as { partindex?: number }).partindex ?? Infinity;
+              const bIndex =
+                (b as { partindex?: number }).partindex ?? Infinity;
               return aIndex - bIndex;
             });
 
@@ -168,27 +170,52 @@ export function createGetSectionContentTool(table: Table) {
             }
           }
 
-          // Build output array from all requested sections
-          // Missing sections are included with found: false and error message
-          const sections = sectionIds.map((id) => {
+          // Build output array from all fetched sections
+          // Missing originally requested sections are included with found: false
+          const sections: {
+            sectionId: string;
+            content: string;
+            found: boolean;
+            error?: string;
+            sectionTitle?: string;
+            childrensectionids?: string[];
+          }[] = [];
+
+          for (const id of sectionIds) {
             const data = sectionsData.get(id);
             if (data) {
-              return {
+              sections.push({
                 sectionId: id,
                 content: data.content.join("\n\n"),
                 found: true,
                 sectionTitle: data.title,
                 childrensectionids: data.childrenSectionIds,
-              };
+              });
+            } else {
+              sections.push({
+                sectionId: id,
+                content: "",
+                found: false,
+                error: `Section '${id}' not found in database`,
+              });
             }
-            return {
-              sectionId: id,
-              content: "",
-              found: false,
-              error: `Section '${id}' not found in database`,
-            };
-          });
-          
+          }
+
+          // Include recursively fetched child sections that were not in the original request
+          if (recursive) {
+            for (const [id, data] of sectionsData) {
+              if (!sectionIds.includes(id)) {
+                sections.push({
+                  sectionId: id,
+                  content: data.content.join("\n\n"),
+                  found: true,
+                  sectionTitle: data.title,
+                  childrensectionids: data.childrenSectionIds,
+                });
+              }
+            }
+          }
+
           const totalSectionsFetched = sectionsData.size;
           const totalContentLength = sections.reduce(
             (sum, s) => sum + s.content.length,
