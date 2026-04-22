@@ -194,7 +194,7 @@ PATTERN 2 - For "How does X work?" questions:
 
 I prefer Pattern 1 when possible as it provides exact spec sections through execution.
 
-Example - How pushing to array works?
+Example - How inserting to array works?
 - Maps to Pattern 2, Flow A:
 - I'll generate this code: 
    let arr = [];
