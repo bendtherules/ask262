@@ -99,13 +99,10 @@ describe("getSectionContent", () => {
       recursive: true,
     });
 
-    // Should include at least the requested section
-    expect(result.sections.length).toBeGreaterThan(0);
-    const requestedSection = result.sections.find(
-      (s) => s.sectionId === "sec-catch-clause",
-    );
-    expect(requestedSection).toBeDefined();
-    expect(requestedSection?.found).toBe(true);
+    // sec-catch-clause has sec-try-statement as a child, so expect 2 sections
+    expect(result.sections.length).toBe(2);
+    expect(result.sections[0].sectionId).toBe("sec-catch-clause");
+    expect(result.sections[1].sectionId).toBe("sec-try-statement");
   });
 
   test("should include recursively fetched child sections in output", async () => {
@@ -114,14 +111,34 @@ describe("getSectionContent", () => {
       recursive: true,
     });
 
-    // sec-catch-clause has sec-try-statement as a child in mock data
+    // Requested section should come first
+    expect(result.sections[0].sectionId).toBe("sec-catch-clause");
+
+    // Child section should be included after requested section
     const childSection = result.sections.find(
       (s) => s.sectionId === "sec-try-statement",
     );
     expect(childSection).toBeDefined();
     expect(childSection?.found).toBe(true);
+    expect(childSection?.sectionTitle).toBe("The try Statement");
     expect(childSection?.content).toBeString();
     expect(childSection?.content.length).toBeGreaterThan(0);
+  });
+
+  test("should not include children when recursive is false", async () => {
+    const result = await getContentTool({
+      sectionIds: ["sec-catch-clause"],
+      recursive: false,
+    });
+
+    // Only the requested section, no children
+    expect(result.sections.length).toBe(1);
+    expect(result.sections[0].sectionId).toBe("sec-catch-clause");
+
+    const childSection = result.sections.find(
+      (s) => s.sectionId === "sec-try-statement",
+    );
+    expect(childSection).toBeUndefined();
   });
 
   test("should preserve input order in output", async () => {
