@@ -10,7 +10,7 @@ import { fileURLToPath } from "node:url";
 import * as lancedbSdk from "@lancedb/lancedb";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
-import { z } from "zod";
+import { askPromptMetadata, createAskPrompt } from "./agent-prompts/index.js";
 import {
   createEvaluateInEngine262Tool,
   createGetSectionContentTool,
@@ -219,62 +219,8 @@ export async function main() {
   );
 
   // Register prompt for tool orchestration guidance
-  server.registerPrompt(
-    "ask",
-    {
-      description:
-        "Explains JavaScript internals from the ECMAScript specification.",
-      argsSchema: {
-        question: z.string().describe("Question"),
-      },
-    },
-    async ({ question }) => ({
-      description: "Ask262 orchestration guide",
-      messages: [
-        {
-          role: "user",
-          content: {
-            type: "text",
-            text: question,
-          },
-        },
-        {
-          role: "assistant",
-          content: {
-            type: "text",
-            text: `I'll help you explore this using the ECMAScript specification. Let me orchestrate the ask262 tools to find accurate information.
-
-Available tools:
-- ask262_search_spec_sections: Vector search to find relevant spec section ids
-- ask262_get_section_content: Retrieve full text from a spec section id  
-- ask262_evaluate_in_engine262: Execute pure JS and capture which spec section ids are hit. Has 1-second timeout for safety.
-
-Based on your question: "${question}"
-
-I'll use one of these orchestration patterns:
-
-PATTERN 1 - For "What happens when I run this code?" questions:
-   - Use ask262Debug.startImportant() and ask262Debug.stopImportant() in the code to mark only important sections.
-   - STEP 1: ask262_evaluate_in_engine262(code: markedCode)
-   - STEP 2: ask262_get_section_content(sectionIds: [importantSections[0]], recursive: true)
-   - Explain which spec sections were hit and why
-
-PATTERN 2 - For "How does X work?" questions (e.g., "${question}"):
-   - Flow A: Generate a specific code example and follow Pattern 1
-   - Flow B: If no code example possible, search broadly:
-     * STEP 1: ask262_search_spec_sections(query: relevant keywords from "${question}")
-     * STEP 2: ask262_get_section_content(sectionIds: [foundSectionId], recursive: true)
-
-I prefer Pattern 1 when possible as it provides exact spec sections through execution.
-
-Key principles:
-- Ignore internal knowledge about Javascript/ECMAScript - rely only on spec sections from tools
-- Reference specific spec sections by section id (sec-array.prototype.map) or number/name (e.g., "23.1.3.21 Array.prototype.map")
-- If I can't generate a relevant code example, I'll ask you to provide one`,
-          },
-        },
-      ],
-    }),
+  server.registerPrompt("ask", askPromptMetadata, async ({ question }) =>
+    createAskPrompt(question),
   );
 
   // Use stdio transport for communication

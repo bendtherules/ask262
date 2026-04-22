@@ -15,7 +15,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
-import { z } from "zod";
+import { askPromptMetadata, createAskPrompt } from "./agent-prompts/index.js";
 import {
   createEvaluateInEngine262Tool,
   createGetSectionContentTool,
@@ -148,75 +148,8 @@ async function createMcpServer() {
   );
 
   // Register prompt for tool orchestration guidance
-  server.registerPrompt(
-    "ask",
-    {
-      description:
-        "Explains JavaScript internals from the ECMAScript specification.",
-      argsSchema: {
-        question: z.string().describe("Question"),
-      },
-    },
-    async ({ question }) => ({
-      description: "Ask262 orchestration guide",
-      messages: [
-        {
-          role: "user",
-          content: {
-            type: "text",
-            text: question,
-          },
-        },
-        {
-          role: "assistant",
-          content: {
-            type: "text",
-            text: `I'll help you understand this from the ECMAScript specification using ask262 tools.
-
-Available tools:
-- ask262_search_spec_sections: Vector search to find relevant spec section ids
-- ask262_get_section_content: Retrieve full text from a spec section id  
-- ask262_evaluate_in_engine262: Execute pure JS and capture which spec section ids are hit. Has 1-second timeout for safety.
-
-I'll use one of these orchestration patterns:
-
-PATTERN 1 - For "What happens when I run this code?" questions:
-   - Use ask262Debug.startImportant() and ask262Debug.stopImportant() in the code to mark only important sections.
-   - STEP 1: ask262_evaluate_in_engine262(code: markedCode)
-   - STEP 2: ask262_get_section_content(sectionIds: ["sec-1", "sec-2"], recursive: true)
-   - Explain which spec sections were hit and why
-
-PATTERN 2 - For "How does X work?" questions:
-   - Flow A: Generate a specific code example and follow Pattern 1
-   - Flow B: If no code example possible, search broadly:
-     * STEP 1: ask262_search_spec_sections(query: "<relevant keywords>")
-     * STEP 2: ask262_get_section_content(sectionIds: ["sec-1", "sec-2"], recursive: true)
-
-I prefer Pattern 1 when possible as it provides exact spec sections through execution.
-
-Example - How inserting to array works?
-- Maps to Pattern 2, Flow A:
-- I'll generate this code:
-  \`\`\`
-   let arr = [];
-   ask262Debug.startImportant();
-   arr.push(1);
-   ask262Debug.stopImportant();
-   console.log(arr);
-   console.log(arr.length);
-  \`\`\`
-- I'll run it through ask262_evaluate_in_engine262 to find important sections
-- I'll get content for some of those sections with ask262_get_section_content
-- I'll explain which sections were hit and how they relate to Array.prototype.push and length property
-
-Key principles:
-- Ignore internal knowledge about Javascript/ECMAScript - rely only on spec sections from tools
-- Reference specific spec sections either by section id (sec-array.prototype.map) or number+name (e.g., "23.1.3.21 Array.prototype.map")
-- If I can't generate a relevant code example, I'll ask you to provide one`,
-          },
-        },
-      ],
-    }),
+  server.registerPrompt("ask", askPromptMetadata, async ({ question }) =>
+    createAskPrompt(question),
   );
 
   return server;
