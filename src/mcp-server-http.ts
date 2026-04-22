@@ -197,14 +197,14 @@ I prefer Pattern 1 when possible as it provides exact spec sections through exec
 Example - How inserting to array works?
 - Maps to Pattern 2, Flow A:
 - I'll generate this code:
-  ```
-  let arr = [];
-  ask262Debug.startImportant();
-  arr.push(1);
-  ask262Debug.stopImportant();
-  console.log(arr);
-  console.log(arr.length);
-  ```
+  \`\`\`
+   let arr = [];
+   ask262Debug.startImportant();
+   arr.push(1);
+   ask262Debug.stopImportant();
+   console.log(arr);
+   console.log(arr.length);
+  \`\`\`
 - I'll run it through ask262_evaluate_in_engine262 to find important sections
 - I'll get content for some of those sections with ask262_get_section_content
 - I'll explain which sections were hit and how they relate to Array.prototype.push and length property
