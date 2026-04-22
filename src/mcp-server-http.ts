@@ -252,21 +252,23 @@ export async function main() {
   // Health check endpoint
   app.get("/health", (c) => c.json({ status: "ok" }));
 
-  // MCP HEAD endpoint - health check / availability probe
-  // Must be defined BEFORE app.all for proper route matching (specific routes first)
-  app.on("HEAD", "/mcp", (_c) => {
-    return new Response(null, {
-      status: 200,
-      headers: {
-        "Content-Type": "application/json",
-        "mcp-protocol-version": "2025-03-26",
-      },
-    });
+  // MCP HEAD handler - runs before the main handler
+  app.use("/mcp", async (c, next) => {
+    if (c.req.method === "HEAD") {
+      return new Response(null, {
+        status: 200,
+        headers: {
+          "Content-Type": "application/json",
+          "mcp-protocol-version": "2025-03-26",
+        },
+      });
+    }
+    await next();
   });
 
-  // MCP endpoint - handles GET and POST
+  // MCP endpoint - handles GET and POST (HEAD is handled by middleware above)
   // Must be defined BEFORE inspector (which mounts at /) for proper route matching
-  app.all("/mcp", async (c) => {
+  app.on(["GET", "POST"], "/mcp", async (c) => {
     // Get parsed body from Hono (automatic JSON parsing)
     let parsedBody: unknown;
     if (c.req.method === "POST") {
