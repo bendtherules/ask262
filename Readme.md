@@ -2,6 +2,13 @@
 
 MCP server for exploring the ECMAScript specification and its implementation in [engine262](https://github.com/bendtherules/engine262).
 
+## 🎮 Try it now
+
+The fastest way to tinker with JavaScript internals:
+
+- **[Ask262 Chat](http://chat.ask262.bendtherules.in/)** — Ask questions in natural language (register new account)
+- **[MCP Inspector](https://ask262.bendtherules.in/)** — Direct access to all mcp tools, no signup needed
+
 ## Features
 
 - **Vector search** ECMAScript specification sections using semantic queries
@@ -20,6 +27,18 @@ MCP server for exploring the ECMAScript specification and its implementation in 
 ## Quick Start (Hosted Instance)
 
 Use the hosted MCP server without any local setup:
+
+### Preferred Method: `npx add-mcp`
+
+Install ask262 MCP server to your client with one command:
+
+```bash
+npx add-mcp "https://ask262.bendtherules.in/mcp"
+```
+
+### Manual Configuration
+
+If you prefer to configure manually:
 
 **Claude Desktop** (`claude_desktop_config.json`):
 ```json
@@ -46,16 +65,13 @@ Use the hosted MCP server without any local setup:
 }
 ```
 
-**Experiment with the Inspector:**
-
-Visit `https://ask262.bendtherules.in/` to access the MCP Inspector UI. This provides an interactive interface to test all available tools with custom inputs.
-
 ## Local Installation
 
 ### Prerequisites
 
 - **Bun**: Version 1.0.0 or higher ([install](https://bun.sh/docs/installation))
-- **Ollama**: Installed locally with `qwen3-embedding:0.6b` model pulled (`ollama pull qwen3-embedding:0.6b`)
+- **Ollama**: Installed with `qwen3-embedding:0.6b` \
+(`ollama pull qwen3-embedding:0.6b`)
 
 ### Setup
 
