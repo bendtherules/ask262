@@ -1,6 +1,6 @@
 {
   "name": "ask262",
-  "version": "0.0.14",
+  "version": "0.0.15",
   "mcpName": "io.github.bendtherules/ask262",
   "description": "MCP server for understanding Javascript internals from ECMAScript specification. Provides vector search over the ECMAScript spec, section content retrieval, and JavaScript code execution with spec section tracing via engine262.",
   "packageManager": "bun@1.2.8",
