@@ -12,7 +12,7 @@ The fastest way to tinker with JavaScript internals:
 ## Features
 
 - **Vector search** ECMAScript specification sections using semantic queries
-- **Execute JavaScript** in engine262 and capture which spec sections are hit
+- **Execute JavaScript** in engine262 and capture spec sections, with `ask262Debug.startImportant()` to mark the key parts of your code
 - **Knowledge graph** mapping spec sections to implementation functions
 - **1-second timeout** on code execution for safety
 
@@ -22,7 +22,7 @@ The fastest way to tinker with JavaScript internals:
 |------|-------------|
 | `ask262_search_spec_sections` | Vector search ECMAScript spec for relevant sections |
 | `ask262_get_section_content` | Retrieve full content from a spec section |
-| `ask262_evaluate_in_engine262` | Execute JS in engine262 and capture spec section marks |
+| `ask262_evaluate_in_engine262` | Execute JS and capture spec sections, with "important" marking to focus on relevant parts |
 
 ## Quick Start (Hosted Instance)
 
