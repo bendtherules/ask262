@@ -4,7 +4,7 @@ export const CODE_DIR = "./engine262/src";
 export const GRAPH_FILE = "./graphology/graph.json";
 
 // Model configurations
-export const OLLAMA_EMBEDDING_MODEL = "qwen3-embedding:0.6b";
+export const OLLAMA_EMBEDDING_MODEL = "qwen3-embedding:8b";
 export const RERANKER_MODEL = "dengcao/Qwen3-Reranker-0.6B:Q8_0";
 
 // Embedding provider configuration

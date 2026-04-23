@@ -22,7 +22,7 @@ export default tool({
 
     // Initialize embeddings
     const embeddings = new OllamaEmbeddings({
-      model: "qwen3-embedding:0.6b",
+      model: "qwen3-embedding:8b",
     });
 
     // Connect to LanceDB

@@ -70,8 +70,8 @@ If you prefer to configure manually:
 ### Prerequisites
 
 - **Bun**: Version 1.0.0 or higher ([install](https://bun.sh/docs/installation))
-- **Ollama**: Installed with `qwen3-embedding:0.6b` \
-(`ollama pull qwen3-embedding:0.6b`)
+- **Ollama**: Installed with `qwen3-embedding:8b` \
+(`ollama pull qwen3-embedding:8b`)
 
 ### Setup
 
