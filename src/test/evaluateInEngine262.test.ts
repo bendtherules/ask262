@@ -196,8 +196,8 @@ describe("evaluateInEngine262", () => {
         (entry) => entry.method === "log",
       );
       expect(logEntry).toBeDefined();
-      expect(logEntry?.values).toContain("hello");
-      expect(logEntry?.values).toContain(123);
+      expect(logEntry?.values).toContain("'hello'");
+      expect(logEntry?.values).toContain("123");
     });
 
     test("should capture console.warn output", async () => {
@@ -210,7 +210,7 @@ describe("evaluateInEngine262", () => {
         (entry) => entry.method === "warn",
       );
       expect(warnEntry).toBeDefined();
-      expect(warnEntry?.values).toContain("warning message");
+      expect(warnEntry?.values).toContain("'warning message'");
     });
 
     test("should capture multiple console calls", async () => {
