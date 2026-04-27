@@ -115,7 +115,7 @@ export type LogComponent =
 
 /**
  * Get the file log level from environment.
- * HTTP server defaults to 'debug', stdio defaults to 'info'.
+ * Defaults to 'debug' when ASK262_LOG_LEVEL is not set.
  *
  * @returns The configured file log level
  */
@@ -124,7 +124,7 @@ function getFileLogLevel(): LogLevel {
   if (envLevel && VALID_LOG_LEVELS.includes(envLevel as LogLevel)) {
     return envLevel as LogLevel;
   }
-  // Default: debug for HTTP, info for stdio
+  // Default: debug (logs everything to file)
   return "debug";
 }
 
@@ -186,7 +186,12 @@ const REDACT_FIELDS = [
 /**
  * Create the root Pino logger instance.
  *
- * @returns Configured Pino logger with dual transport
+ * Console output is opt-in via ASK262_LOG_CONSOLE=true to avoid:
+ * - Corrupting stdio MCP protocol on stdout
+ * - Noisy test output when running under bun test
+ * When enabled, console logs are routed to stderr.
+ *
+ * @returns Configured Pino logger with file transport, and optional console
  */
 async function createRootLogger(): Promise<pino.Logger> {
   await ensureLogDir();
@@ -195,17 +200,24 @@ async function createRootLogger(): Promise<pino.Logger> {
   const logFile = join(logDir, "ask262.jsonl");
 
   const fileLevel = getFileLogLevel();
-  const consoleLevel = getConsoleLogLevel();
 
   // File transport: JSON Lines format, synchronous writes
   const fileStream = createWriteStream(logFile, { flags: "a" });
+  const streams: pino.StreamEntry[] = [
+    { stream: fileStream, level: fileLevel },
+  ];
 
-  // Console transport: Pretty printed
-  const consoleStream = pretty({
-    colorize: true,
-    translateTime: "SYS:standard",
-    ignore: "pid,hostname",
-  });
+  // Console transport: opt-in only (ASK262_LOG_CONSOLE=true)
+  if (process.env.ASK262_LOG_CONSOLE === "true") {
+    const consoleLevel = getConsoleLogLevel();
+    const consoleStream = pretty({
+      colorize: true,
+      translateTime: "SYS:standard",
+      ignore: "pid,hostname",
+      destination: process.stderr,
+    });
+    streams.push({ stream: consoleStream, level: consoleLevel });
+  }
 
   return pino(
     {
@@ -234,10 +246,7 @@ async function createRootLogger(): Promise<pino.Logger> {
       },
       timestamp: () => `,"timestamp":"${new Date().toISOString()}"`,
     },
-    pino.multistream([
-      { stream: fileStream, level: fileLevel },
-      { stream: consoleStream, level: consoleLevel },
-    ]),
+    pino.multistream(streams),
   );
 }
 
