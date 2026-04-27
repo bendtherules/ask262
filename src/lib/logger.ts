@@ -208,6 +208,7 @@ async function createRootLogger(): Promise<pino.Logger> {
             trace_id: traceCtx.traceId,
             span_id: traceCtx.spanId,
             parent_span_id: traceCtx.parentSpanId,
+            ...(traceCtx.metadata && { metadata: traceCtx.metadata }),
           };
         }
         return {};

@@ -1,5 +1,7 @@
 import { Embeddings, type EmbeddingsParams } from "@langchain/core/embeddings";
+import { trace } from "@opentelemetry/api";
 import { LogOperation, logger } from "./logger.js";
+import { withSpan } from "./tracing.js";
 
 /**
  * Interface for FireworksEmbeddings parameters.
@@ -180,37 +182,59 @@ export class FireworksEmbeddings extends Embeddings {
 
   /**
    * Make the actual API call to Fireworks for embeddings.
+   * Wrapped in an OTel span with GenAI attributes for Langfuse cost tracking.
    */
   private async embedBatch(documents: string[]): Promise<number[][]> {
-    const url = `${this.baseUrl}/embeddings`;
+    return await withSpan(
+      LogOperation.PROCESSING_EMBEDDING_BATCH,
+      { model: this.modelName, batch_size: documents.length },
+      async () => {
+        const url = `${this.baseUrl}/embeddings`;
 
-    const response = await fetch(url, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${this.apiKey}`,
-        "Content-Type": "application/json",
-        Accept: "application/json",
+        const response = await fetch(url, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${this.apiKey}`,
+            "Content-Type": "application/json",
+            Accept: "application/json",
+          },
+          body: JSON.stringify({
+            model: this.modelName,
+            input: documents,
+          }),
+        });
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          throw new Error(
+            `Fireworks API error: ${response.status} ${response.statusText} - ${errorText}`,
+          );
+        }
+
+        const data = (await response.json()) as FireworksEmbeddingResponse;
+
+        // Extract embeddings from response
+        // Fireworks returns embeddings in the same order as input
+        const embeddings = data.data.map((item) => item.embedding);
+
+        // Set GenAI attributes on the active span for Langfuse generation tracking
+        const activeSpan = trace.getActiveSpan();
+        if (activeSpan) {
+          activeSpan.setAttribute("gen_ai.system", "fireworks");
+          activeSpan.setAttribute("gen_ai.request.model", this.modelName);
+          activeSpan.setAttribute(
+            "gen_ai.usage.input_tokens",
+            data.usage.prompt_tokens,
+          );
+          activeSpan.setAttribute(
+            "gen_ai.usage.output_tokens",
+            data.usage.completion_tokens,
+          );
+        }
+
+        return embeddings;
       },
-      body: JSON.stringify({
-        model: this.modelName,
-        input: documents,
-      }),
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(
-        `Fireworks API error: ${response.status} ${response.statusText} - ${errorText}`,
-      );
-    }
-
-    const data = (await response.json()) as FireworksEmbeddingResponse;
-
-    // Extract embeddings from response
-    // Fireworks returns embeddings in the same order as input
-    const embeddings = data.data.map((item) => item.embedding);
-
-    return embeddings;
+    );
   }
 }
 
@@ -235,5 +259,9 @@ interface FireworksEmbeddingResponse {
   usage: {
     prompt_tokens: number;
     total_tokens: number;
+    completion_tokens: number;
+    prompt_tokens_details: {
+      cached_tokens: number;
+    };
   };
 }

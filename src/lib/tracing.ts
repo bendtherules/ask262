@@ -10,6 +10,30 @@
 import { AsyncLocalStorage } from "node:async_hooks";
 import { randomUUID } from "node:crypto";
 import { SpanStatusCode, trace } from "@opentelemetry/api";
+import pkg from "../../package.json" with { type: "json" };
+import { initializeLangfuseTransport } from "./langfuse-transport.js";
+
+/**
+ * One-time setup for the tracing system.
+ * Registers the Langfuse OTel processor when enabled.
+ * Must be called before any spans are created.
+ */
+export function setupTracing(): void {
+  initializeLangfuseTransport();
+}
+
+/**
+ * Build session metadata for a transport.
+ * Included in both JSON logs (via TraceContext) and Langfuse traces.
+ */
+export function getSessionMetadata(
+  transport: "http" | "stdio",
+): Record<string, unknown> {
+  return {
+    version: pkg.version,
+    transport,
+  };
+}
 
 /**
  * Trace context stored in AsyncLocalStorage.
@@ -23,6 +47,8 @@ interface TraceContext {
   parentSpanId: string | null;
   /** Span depth level (0 = root) */
   depth: number;
+  /** Optional metadata propagated to JSON logs and Langfuse traces */
+  metadata?: Record<string, unknown>;
 }
 
 // AsyncLocalStorage for automatic context propagation
@@ -70,12 +96,16 @@ function generateTraceId(): string {
  * const traceCtx = createTraceContext(req.headers['x-request-id'] as string);
  * ```
  */
-export function createTraceContext(traceId?: string): TraceContext {
+export function createTraceContext(
+  traceId?: string,
+  metadata?: Record<string, unknown>,
+): TraceContext {
   return {
     traceId: traceId ?? generateTraceId(),
     spanId: generateSpanId(),
     parentSpanId: null,
     depth: 0,
+    metadata,
   };
 }
 
@@ -108,6 +138,7 @@ export async function withSpan<T>(
   attributes: Record<string, unknown> = {},
   fn: () => Promise<T>,
   traceId?: string,
+  metadata?: Record<string, unknown>,
 ): Promise<T> {
   const parentContext = getCurrentContext();
   const tracer = trace.getTracer("ask262");
@@ -119,33 +150,39 @@ export async function withSpan<T>(
         spanId: generateSpanId(),
         parentSpanId: parentContext.spanId,
         depth: parentContext.depth + 1,
+        metadata: parentContext.metadata,
       }
-    : createTraceContext(traceId);
-
-  // Create OTel span for context tracking
-  const span = tracer.startSpan(operation, {
-    attributes: {
-      ...attributes,
-      "span.depth": spanContext.depth,
-    },
-  });
+    : createTraceContext(traceId, metadata);
 
   // Store in AsyncLocalStorage for nested calls
   return traceStorage.run(spanContext, async () => {
-    try {
-      const result = await fn();
-      span.setStatus({ code: SpanStatusCode.OK });
-      return result;
-    } catch (err) {
-      span.setStatus({
-        code: SpanStatusCode.ERROR,
-        message: err instanceof Error ? err.message : String(err),
-      });
-      span.recordException(err instanceof Error ? err : new Error(String(err)));
-      throw err;
-    } finally {
-      span.end();
-    }
+    return tracer.startActiveSpan(
+      operation,
+      {
+        attributes: {
+          ...attributes,
+          "span.depth": spanContext.depth,
+        },
+      },
+      async (span) => {
+        try {
+          const result = await fn();
+          span.setStatus({ code: SpanStatusCode.OK });
+          return result;
+        } catch (err) {
+          span.setStatus({
+            code: SpanStatusCode.ERROR,
+            message: err instanceof Error ? err.message : String(err),
+          });
+          span.recordException(
+            err instanceof Error ? err : new Error(String(err)),
+          );
+          throw err;
+        } finally {
+          span.end();
+        }
+      },
+    );
   });
 }
 
@@ -216,6 +253,7 @@ export async function withSpanContext<T>(
   operation: string,
   attributes: Record<string, unknown> = {},
   fn: () => Promise<T>,
+  metadata?: Record<string, unknown>,
 ): Promise<T> {
   // Check if we're already in a context
   const existingContext = getCurrentContext();
@@ -226,36 +264,37 @@ export async function withSpanContext<T>(
   }
 
   // Create new root span with this trace ID
-  const spanContext: TraceContext = {
-    traceId,
-    spanId: generateSpanId(),
-    parentSpanId: null,
-    depth: 0,
-  };
-
+  const spanContext = createTraceContext(traceId, metadata);
   const tracer = trace.getTracer("ask262");
-  const span = tracer.startSpan(operation, {
-    attributes: {
-      ...attributes,
-      "span.depth": 0,
-    },
-  });
 
   return traceStorage.run(spanContext, async () => {
-    try {
-      const result = await fn();
-      span.setStatus({ code: SpanStatusCode.OK });
-      return result;
-    } catch (err) {
-      span.setStatus({
-        code: SpanStatusCode.ERROR,
-        message: err instanceof Error ? err.message : String(err),
-      });
-      span.recordException(err instanceof Error ? err : new Error(String(err)));
-      throw err;
-    } finally {
-      span.end();
-    }
+    return tracer.startActiveSpan(
+      operation,
+      {
+        attributes: {
+          ...attributes,
+          "span.depth": 0,
+        },
+      },
+      async (span) => {
+        try {
+          const result = await fn();
+          span.setStatus({ code: SpanStatusCode.OK });
+          return result;
+        } catch (err) {
+          span.setStatus({
+            code: SpanStatusCode.ERROR,
+            message: err instanceof Error ? err.message : String(err),
+          });
+          span.recordException(
+            err instanceof Error ? err : new Error(String(err)),
+          );
+          throw err;
+        } finally {
+          span.end();
+        }
+      },
+    );
   });
 }
 

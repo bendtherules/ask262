@@ -61,6 +61,8 @@ Copy `.env.example` to `.env`:
 - `OLLAMA_HOST` - Ollama URL (default: http://localhost:11434)
 - `ASK262_PORT` - HTTP server port (default: 8081)
 - `MCP_PUBLIC_URL` - Public URL for inspector
+- `ASK262_LANGFUSE_ENABLED` - Enable Langfuse tracing (optional)
+- `LANGFUSE_PUBLIC_KEY` / `LANGFUSE_SECRET_KEY` - Langfuse credentials (required when enabled)
 
 ## Key Dependencies
 
@@ -76,3 +78,7 @@ Copy `.env.example` to `.env`:
 - Run `bun run type-check` before committing
 - Ingest/build are slow (local embedding generation)
 - Don't lint/format external dirs (`engine262/`, `spec-built/`, `graphology/`)
+
+## Observability
+
+Ask262 uses OpenTelemetry for tracing. When `ASK262_LANGFUSE_ENABLED=true` is set with valid Langfuse credentials, all OTel spans are exported to Langfuse automatically. No code changes are needed — it's purely a transport configuration. Metadata (version, transport type) is attached to every trace and included in both Langfuse and JSON logs.
