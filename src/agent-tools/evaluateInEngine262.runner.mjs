@@ -25,6 +25,7 @@ process.stdin.on("end", async () => {
     const Value = engine.Value;
     const skipDebugger = engine.skipDebugger;
     const ask262Debug = engine.ask262Debug;
+    const inspect = engine.inspect;
 
     // Reset state
     ask262Debug.reset();
@@ -87,19 +88,8 @@ process.stdin.on("end", async () => {
       for (const method of consoleMethods) {
         const fn = CreateBuiltinFunction(
           (args) => {
-            const jsValues = args.map((arg) => {
-              if (arg && typeof arg === "object") {
-                const strVal = arg.stringValue;
-                if (typeof strVal === "function") {
-                  return strVal.call(arg);
-                }
-                const value = arg.value;
-                if (value !== undefined) {
-                  return value;
-                }
-              }
-              return arg;
-            });
+            // Use engine262's inspect() to convert Values to readable JS strings
+            const jsValues = args.map((arg) => inspect(arg));
             consoleOutput.push({ method, values: jsValues });
             return Value("undefined");
           },
