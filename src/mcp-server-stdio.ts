@@ -179,7 +179,7 @@ export async function main() {
             .getActiveSpan()
             ?.setAttribute(
               LANGFUSE_TRACE_OUTPUT_ATTR,
-              JSON.stringify(result),
+              JSON.stringify({ output: result }),
             );
           return {
             content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
@@ -237,7 +237,7 @@ export async function main() {
             .getActiveSpan()
             ?.setAttribute(
               LANGFUSE_TRACE_OUTPUT_ATTR,
-              JSON.stringify(result),
+              JSON.stringify({ output: result }),
             );
           return {
             content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
@@ -289,7 +289,7 @@ export async function main() {
             .getActiveSpan()
             ?.setAttribute(
               LANGFUSE_TRACE_OUTPUT_ATTR,
-              JSON.stringify(result),
+              JSON.stringify({ output: result }),
             );
           const isError = result.error !== undefined;
           const text = isError ? result.error : JSON.stringify(result, null, 2);

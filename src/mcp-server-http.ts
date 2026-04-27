@@ -38,8 +38,10 @@ import { createEmbeddings } from "./lib/embeddings-factory.js";
 import { LogOperation, logger } from "./lib/logger.js";
 import { trace } from "@opentelemetry/api";
 import {
+  extractMcpToolInfo,
   LANGFUSE_OBSERVATION_INPUT_ATTR,
   LANGFUSE_OBSERVATION_OUTPUT_ATTR,
+  LANGFUSE_TRACE_INPUT_ATTR,
   LANGFUSE_TRACE_NAME_ATTR,
   LANGFUSE_TRACE_OUTPUT_ATTR,
   TRACE_NAME_HTTP,
@@ -111,7 +113,7 @@ async function createMcpServer() {
             .getActiveSpan()
             ?.setAttribute(
               LANGFUSE_TRACE_OUTPUT_ATTR,
-              JSON.stringify(result),
+              JSON.stringify({ output: result }),
             );
           trace
             .getActiveSpan()
@@ -159,7 +161,7 @@ async function createMcpServer() {
             .getActiveSpan()
             ?.setAttribute(
               LANGFUSE_TRACE_OUTPUT_ATTR,
-              JSON.stringify(result),
+              JSON.stringify({ output: result }),
             );
           trace
             .getActiveSpan()
@@ -204,7 +206,7 @@ async function createMcpServer() {
             .getActiveSpan()
             ?.setAttribute(
               LANGFUSE_TRACE_OUTPUT_ATTR,
-              JSON.stringify(result),
+              JSON.stringify({ output: result }),
             );
           trace
             .getActiveSpan()
@@ -298,15 +300,27 @@ export async function main() {
       }
     }
 
+    // Extract MCP tool info for trace-level input
+    const mcpInfo = extractMcpToolInfo(parsedBody);
+
     // Handle request within trace context (passing trace ID from header if available)
     const sessionMetadata = getSessionMetadata("http");
     return await withSpan(
       "mcp_http_request",
       {
         [LANGFUSE_TRACE_NAME_ATTR]: TRACE_NAME_HTTP,
+        [LANGFUSE_TRACE_INPUT_ATTR]: JSON.stringify({
+          http_method: c.req.method,
+          mcp_method: mcpInfo.method,
+          tool: mcpInfo.tool,
+          input: mcpInfo.input,
+          client_ip: clientIp,
+        }),
         [LANGFUSE_OBSERVATION_INPUT_ATTR]: JSON.stringify({
-          method: c.req.method,
-          endpoint: "/mcp",
+          http_method: c.req.method,
+          mcp_method: mcpInfo.method,
+          tool: mcpInfo.tool,
+          input: mcpInfo.input,
           client_ip: clientIp,
         }),
         method: c.req.method,
