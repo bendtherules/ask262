@@ -36,6 +36,14 @@ import {
 import { DEFAULT_PORT, STORAGE_DIR as STORAGE_DIR_REL } from "./constants.js";
 import { createEmbeddings } from "./lib/embeddings-factory.js";
 import { LogOperation, logger } from "./lib/logger.js";
+import { trace } from "@opentelemetry/api";
+import {
+  LANGFUSE_OBSERVATION_INPUT_ATTR,
+  LANGFUSE_OBSERVATION_OUTPUT_ATTR,
+  LANGFUSE_TRACE_NAME_ATTR,
+  LANGFUSE_TRACE_OUTPUT_ATTR,
+  TRACE_NAME_HTTP,
+} from "./lib/langfuse-transport.js";
 import { getSessionMetadata, setupTracing, withSpan } from "./lib/tracing.js";
 
 // Resolve storage path relative to this script's directory
@@ -93,12 +101,24 @@ async function createMcpServer() {
       return await withSpan(
         "ask262_search_spec_sections",
         {
-          "langfuse.observation.input": JSON.stringify({ query }),
+          [LANGFUSE_OBSERVATION_INPUT_ATTR]: JSON.stringify({ query }),
           tool: searchSpecToolName,
           query,
         },
         async () => {
           const result = await searchSpecTool({ query });
+          trace
+            .getActiveSpan()
+            ?.setAttribute(
+              LANGFUSE_TRACE_OUTPUT_ATTR,
+              JSON.stringify(result),
+            );
+          trace
+            .getActiveSpan()
+            ?.setAttribute(
+              LANGFUSE_OBSERVATION_OUTPUT_ATTR,
+              JSON.stringify(result),
+            );
           return {
             content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
             structuredContent: result,
@@ -126,7 +146,7 @@ async function createMcpServer() {
       return await withSpan(
         "ask262_get_section_content",
         {
-          "langfuse.observation.input": JSON.stringify({
+          [LANGFUSE_OBSERVATION_INPUT_ATTR]: JSON.stringify({
             sectionIds,
             recursive,
           }),
@@ -135,6 +155,18 @@ async function createMcpServer() {
         },
         async () => {
           const result = await getSectionContentTool({ sectionIds, recursive });
+          trace
+            .getActiveSpan()
+            ?.setAttribute(
+              LANGFUSE_TRACE_OUTPUT_ATTR,
+              JSON.stringify(result),
+            );
+          trace
+            .getActiveSpan()
+            ?.setAttribute(
+              LANGFUSE_OBSERVATION_OUTPUT_ATTR,
+              JSON.stringify(result),
+            );
           return {
             content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
             structuredContent: result,
@@ -162,14 +194,24 @@ async function createMcpServer() {
       return await withSpan(
         "ask262_evaluate_in_engine262",
         {
-          "langfuse.observation.input": JSON.stringify({
-            code: code.slice(0, 200),
-          }),
+          [LANGFUSE_OBSERVATION_INPUT_ATTR]: JSON.stringify({ code }),
           tool: evaluateToolName,
           code_length: code.length,
         },
         async () => {
           const result = await evaluateTool({ code });
+          trace
+            .getActiveSpan()
+            ?.setAttribute(
+              LANGFUSE_TRACE_OUTPUT_ATTR,
+              JSON.stringify(result),
+            );
+          trace
+            .getActiveSpan()
+            ?.setAttribute(
+              LANGFUSE_OBSERVATION_OUTPUT_ATTR,
+              JSON.stringify(result),
+            );
           const isError = result.error !== undefined;
           const text = isError
             ? result.error
@@ -259,8 +301,17 @@ export async function main() {
     // Handle request within trace context (passing trace ID from header if available)
     const sessionMetadata = getSessionMetadata("http");
     return await withSpan(
-      LogOperation.HANDLING_MCP_HTTP_REQUEST,
-      { method: c.req.method, client_ip: clientIp },
+      "mcp_http_request",
+      {
+        [LANGFUSE_TRACE_NAME_ATTR]: TRACE_NAME_HTTP,
+        [LANGFUSE_OBSERVATION_INPUT_ATTR]: JSON.stringify({
+          method: c.req.method,
+          endpoint: "/mcp",
+          client_ip: clientIp,
+        }),
+        method: c.req.method,
+        client_ip: clientIp,
+      },
       async () => {
         const op = log.start(LogOperation.HANDLING_MCP_HTTP_REQUEST, {
           method: c.req.method,
@@ -284,7 +335,6 @@ export async function main() {
 
           op.end({ status: "success" });
 
-          // Return the Web Standard Response directly
           return response;
         } catch (err) {
           const error = err instanceof Error ? err : new Error(String(err));

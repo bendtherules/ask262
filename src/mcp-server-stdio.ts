@@ -37,6 +37,15 @@ import {
 import { STORAGE_DIR as STORAGE_DIR_REL } from "./constants.js";
 import { createEmbeddings } from "./lib/embeddings-factory.js";
 import { LogOperation, logger } from "./lib/logger.js";
+import { trace } from "@opentelemetry/api";
+import {
+  LANGFUSE_OBSERVATION_INPUT_ATTR,
+  LANGFUSE_OBSERVATION_OUTPUT_ATTR,
+  LANGFUSE_TRACE_INPUT_ATTR,
+  LANGFUSE_TRACE_NAME_ATTR,
+  LANGFUSE_TRACE_OUTPUT_ATTR,
+  TRACE_NAME_STDIO,
+} from "./lib/langfuse-transport.js";
 import {
   createProcessScopedTrace,
   getSessionMetadata,
@@ -149,12 +158,29 @@ export async function main() {
         sessionTraceId,
         "ask262_search_spec_sections",
         {
-          "langfuse.observation.input": JSON.stringify({ query }),
+          LANGFUSE_TRACE_NAME_ATTR: TRACE_NAME_STDIO,
+          LANGFUSE_TRACE_INPUT_ATTR: JSON.stringify({
+            tool: searchSpecToolName,
+            input: { query },
+          }),
+          LANGFUSE_OBSERVATION_INPUT_ATTR: JSON.stringify({ query }),
           tool: searchSpecToolName,
           query,
         },
         async () => {
           const result = await searchSpecTool({ query });
+          trace
+            .getActiveSpan()
+            ?.setAttribute(
+              LANGFUSE_OBSERVATION_OUTPUT_ATTR,
+              JSON.stringify(result),
+            );
+          trace
+            .getActiveSpan()
+            ?.setAttribute(
+              LANGFUSE_TRACE_OUTPUT_ATTR,
+              JSON.stringify(result),
+            );
           return {
             content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
             structuredContent: result,
@@ -187,7 +213,12 @@ export async function main() {
         sessionTraceId,
         "ask262_get_section_content",
         {
-          "langfuse.observation.input": JSON.stringify({
+          LANGFUSE_TRACE_NAME_ATTR: TRACE_NAME_STDIO,
+          LANGFUSE_TRACE_INPUT_ATTR: JSON.stringify({
+            tool: sectionContentToolName,
+            input: { sectionIds, recursive },
+          }),
+          LANGFUSE_OBSERVATION_INPUT_ATTR: JSON.stringify({
             sectionIds,
             recursive,
           }),
@@ -196,6 +227,18 @@ export async function main() {
         },
         async () => {
           const result = await getSectionContentTool({ sectionIds, recursive });
+          trace
+            .getActiveSpan()
+            ?.setAttribute(
+              LANGFUSE_OBSERVATION_OUTPUT_ATTR,
+              JSON.stringify(result),
+            );
+          trace
+            .getActiveSpan()
+            ?.setAttribute(
+              LANGFUSE_TRACE_OUTPUT_ATTR,
+              JSON.stringify(result),
+            );
           return {
             content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
             structuredContent: result,
@@ -225,14 +268,29 @@ export async function main() {
         sessionTraceId,
         "ask262_evaluate_in_engine262",
         {
-          "langfuse.observation.input": JSON.stringify({
-            code: code.slice(0, 200),
+          LANGFUSE_TRACE_NAME_ATTR: TRACE_NAME_STDIO,
+          LANGFUSE_TRACE_INPUT_ATTR: JSON.stringify({
+            tool: evaluateToolName,
+            input: { code },
           }),
+          LANGFUSE_OBSERVATION_INPUT_ATTR: JSON.stringify({ code }),
           tool: evaluateToolName,
           code_length: code.length,
         },
         async () => {
           const result = await evaluateTool({ code });
+          trace
+            .getActiveSpan()
+            ?.setAttribute(
+              LANGFUSE_OBSERVATION_OUTPUT_ATTR,
+              JSON.stringify(result),
+            );
+          trace
+            .getActiveSpan()
+            ?.setAttribute(
+              LANGFUSE_TRACE_OUTPUT_ATTR,
+              JSON.stringify(result),
+            );
           const isError = result.error !== undefined;
           const text = isError ? result.error : JSON.stringify(result, null, 2);
           return {
