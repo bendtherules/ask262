@@ -78,17 +78,6 @@ export enum LogOperation {
 }
 
 /**
- * Numeric log level values (Pino convention).
- */
-const LOG_LEVEL_VALUES: Record<LogLevel, number> = {
-  trace: 10,
-  debug: 20,
-  info: 30,
-  warn: 40,
-  error: 50,
-};
-
-/**
  * Valid log level strings.
  */
 const VALID_LOG_LEVELS: LogLevel[] = [
@@ -126,21 +115,6 @@ function getFileLogLevel(): LogLevel {
   }
   // Default: debug (logs everything to file)
   return "debug";
-}
-
-/**
- * Get the console log level.
- * Console shows max('info', file level) - never shows debug.
- *
- * @returns The calculated console log level
- */
-function getConsoleLogLevel(): LogLevel {
-  const fileLevel = getFileLogLevel();
-  const fileLevelValue = LOG_LEVEL_VALUES[fileLevel];
-  const infoLevelValue = LOG_LEVEL_VALUES.info;
-
-  // Console level is max of (info, file level)
-  return fileLevelValue > infoLevelValue ? fileLevel : "info";
 }
 
 /**
@@ -209,14 +183,13 @@ async function createRootLogger(): Promise<pino.Logger> {
 
   // Console transport: opt-in only (ASK262_LOG_CONSOLE=true)
   if (process.env.ASK262_LOG_CONSOLE === "true") {
-    const consoleLevel = getConsoleLogLevel();
     const consoleStream = pretty({
       colorize: true,
       translateTime: "SYS:standard",
       ignore: "pid,hostname",
       destination: process.stderr,
     });
-    streams.push({ stream: consoleStream, level: consoleLevel });
+    streams.push({ stream: consoleStream, level: fileLevel });
   }
 
   return pino(
