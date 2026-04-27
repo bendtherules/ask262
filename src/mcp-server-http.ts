@@ -36,7 +36,7 @@ import {
 import { DEFAULT_PORT, STORAGE_DIR as STORAGE_DIR_REL } from "./constants.js";
 import { createEmbeddings } from "./lib/embeddings-factory.js";
 import { LogOperation, logger } from "./lib/logger.js";
-import { withSpan } from "./lib/tracing.js";
+import { getSessionMetadata, setupTracing, withSpan } from "./lib/tracing.js";
 
 // Resolve storage path relative to this script's directory
 const __filename = fileURLToPath(import.meta.url);
@@ -90,12 +90,22 @@ async function createMcpServer() {
       },
     },
     async ({ query }) => {
-      const result = await searchSpecTool({ query });
-      return {
-        content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
-        structuredContent: result,
-        isError: false,
-      };
+      return await withSpan(
+        "ask262_search_spec_sections",
+        {
+          "langfuse.observation.input": JSON.stringify({ query }),
+          tool: searchSpecToolName,
+          query,
+        },
+        async () => {
+          const result = await searchSpecTool({ query });
+          return {
+            content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
+            structuredContent: result,
+            isError: false,
+          };
+        },
+      );
     },
   );
 
@@ -113,12 +123,25 @@ async function createMcpServer() {
       },
     },
     async ({ sectionIds, recursive }) => {
-      const result = await getSectionContentTool({ sectionIds, recursive });
-      return {
-        content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
-        structuredContent: result,
-        isError: false,
-      };
+      return await withSpan(
+        "ask262_get_section_content",
+        {
+          "langfuse.observation.input": JSON.stringify({
+            sectionIds,
+            recursive,
+          }),
+          tool: sectionContentToolName,
+          section_count: sectionIds.length,
+        },
+        async () => {
+          const result = await getSectionContentTool({ sectionIds, recursive });
+          return {
+            content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
+            structuredContent: result,
+            isError: false,
+          };
+        },
+      );
     },
   );
 
@@ -136,14 +159,28 @@ async function createMcpServer() {
       },
     },
     async ({ code }) => {
-      const result = await evaluateTool({ code });
-      const isError = result.error !== undefined;
-      const text = isError ? result.error : JSON.stringify(result, null, 2);
-      return {
-        content: [{ type: "text", text }],
-        structuredContent: result,
-        isError,
-      };
+      return await withSpan(
+        "ask262_evaluate_in_engine262",
+        {
+          "langfuse.observation.input": JSON.stringify({
+            code: code.slice(0, 200),
+          }),
+          tool: evaluateToolName,
+          code_length: code.length,
+        },
+        async () => {
+          const result = await evaluateTool({ code });
+          const isError = result.error !== undefined;
+          const text = isError
+            ? result.error
+            : JSON.stringify(result, null, 2);
+          return {
+            content: [{ type: "text", text }],
+            structuredContent: result,
+            isError,
+          };
+        },
+      );
     },
   );
 
@@ -156,6 +193,9 @@ async function createMcpServer() {
 }
 
 export async function main() {
+  // Initialize tracing (registers Langfuse processor when enabled)
+  setupTracing();
+
   // Initialize HTTP server logger
   const log = await logger.forComponent("http-server");
 
@@ -217,6 +257,7 @@ export async function main() {
     }
 
     // Handle request within trace context (passing trace ID from header if available)
+    const sessionMetadata = getSessionMetadata("http");
     return await withSpan(
       LogOperation.HANDLING_MCP_HTTP_REQUEST,
       { method: c.req.method, client_ip: clientIp },
@@ -257,6 +298,7 @@ export async function main() {
         }
       },
       traceId,
+      sessionMetadata,
     );
   });
 

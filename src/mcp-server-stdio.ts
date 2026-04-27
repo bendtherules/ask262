@@ -37,7 +37,12 @@ import {
 import { STORAGE_DIR as STORAGE_DIR_REL } from "./constants.js";
 import { createEmbeddings } from "./lib/embeddings-factory.js";
 import { LogOperation, logger } from "./lib/logger.js";
-import { createProcessScopedTrace, withSpanContext } from "./lib/tracing.js";
+import {
+  createProcessScopedTrace,
+  getSessionMetadata,
+  setupTracing,
+  withSpanContext,
+} from "./lib/tracing.js";
 
 // Resolve storage path relative to this script's directory
 const __filename = fileURLToPath(import.meta.url);
@@ -90,6 +95,9 @@ export interface SearchSpecMCPOutput extends McpToolOutputBase {
 const embeddings = createEmbeddings();
 
 export async function main() {
+  // Initialize tracing (registers Langfuse processor when enabled)
+  setupTracing();
+
   // Initialize stdio server logger
   const log = await logger.forComponent("stdio-server");
 
@@ -139,8 +147,12 @@ export async function main() {
     async ({ query }: SearchSpecMCPInput): Promise<SearchSpecMCPOutput> => {
       return await withSpanContext(
         sessionTraceId,
-        "vector_search",
-        { tool: searchSpecToolName, query },
+        "ask262_search_spec_sections",
+        {
+          "langfuse.observation.input": JSON.stringify({ query }),
+          tool: searchSpecToolName,
+          query,
+        },
         async () => {
           const result = await searchSpecTool({ query });
           return {
@@ -149,6 +161,7 @@ export async function main() {
             isError: false,
           };
         },
+        getSessionMetadata("stdio"),
       );
     },
   );
@@ -172,8 +185,15 @@ export async function main() {
     }: GetSectionContentMCPInput): Promise<GetSectionContentMCPOutput> => {
       return await withSpanContext(
         sessionTraceId,
-        "section_fetch",
-        { tool: sectionContentToolName, section_count: sectionIds.length },
+        "ask262_get_section_content",
+        {
+          "langfuse.observation.input": JSON.stringify({
+            sectionIds,
+            recursive,
+          }),
+          tool: sectionContentToolName,
+          section_count: sectionIds.length,
+        },
         async () => {
           const result = await getSectionContentTool({ sectionIds, recursive });
           return {
@@ -182,6 +202,7 @@ export async function main() {
             isError: false,
           };
         },
+        getSessionMetadata("stdio"),
       );
     },
   );
@@ -202,8 +223,14 @@ export async function main() {
     async ({ code }: EvaluateToolMCPInput): Promise<EvaluateToolMCPOutput> => {
       return await withSpanContext(
         sessionTraceId,
-        "code_execution",
-        { tool: evaluateToolName, code_length: code.length },
+        "ask262_evaluate_in_engine262",
+        {
+          "langfuse.observation.input": JSON.stringify({
+            code: code.slice(0, 200),
+          }),
+          tool: evaluateToolName,
+          code_length: code.length,
+        },
         async () => {
           const result = await evaluateTool({ code });
           const isError = result.error !== undefined;
@@ -214,6 +241,7 @@ export async function main() {
             isError,
           };
         },
+        getSessionMetadata("stdio"),
       );
     },
   );
