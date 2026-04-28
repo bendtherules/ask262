@@ -304,7 +304,11 @@ export async function main() {
     const mcpInfo = extractMcpToolInfo(parsedBody);
 
     // Handle request within trace context (passing trace ID from header if available)
-    const sessionMetadata = getSessionMetadata("http");
+    const sessionMetadata = {
+      ...getSessionMetadata("http"),
+      mcp_method: mcpInfo.method,
+      tool: mcpInfo.tool,
+    };
     return await withSpan(
       "mcp_http_request",
       {

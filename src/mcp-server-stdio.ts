@@ -187,7 +187,11 @@ export async function main() {
             isError: false,
           };
         },
-        getSessionMetadata("stdio"),
+        {
+          ...getSessionMetadata("stdio"),
+          mcp_method: "tools/call",
+          tool: searchSpecToolName,
+        },
       );
     },
   );
@@ -245,7 +249,11 @@ export async function main() {
             isError: false,
           };
         },
-        getSessionMetadata("stdio"),
+        {
+          ...getSessionMetadata("stdio"),
+          mcp_method: "tools/call",
+          tool: sectionContentToolName,
+        },
       );
     },
   );
@@ -299,7 +307,11 @@ export async function main() {
             isError,
           };
         },
-        getSessionMetadata("stdio"),
+        {
+          ...getSessionMetadata("stdio"),
+          mcp_method: "tools/call",
+          tool: evaluateToolName,
+        },
       );
     },
   );
