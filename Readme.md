@@ -8,6 +8,7 @@ The fastest way to tinker with JavaScript internals:
 
 - **[Ask262 Chat](http://chat.ask262.bendtherules.in/)** — Ask questions in natural language (register new account)
 - **[MCP Inspector](https://ask262.bendtherules.in/)** — Direct access to all mcp tools, no signup needed
+- `npx add-mcp "https://ask262.bendtherules.in/mcp"`
 
 ## Features
 
