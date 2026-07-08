@@ -68,8 +68,8 @@ export function initializeLangfuseTransport(): void {
         // Only export tool-call spans, skip health checks and protocol noise
         shouldExportSpan: (span) => {
           const mcpMethod = span.otelSpan.attributes["mcp_method"];
-          if (mcpMethod === "tools/call") return true;
-          return !mcpMethod;
+          if (mcpMethod === undefined) return true;
+          return mcpMethod === "tools/call";
         },
       }),
     ],
