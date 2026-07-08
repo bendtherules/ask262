@@ -65,8 +65,12 @@ export function initializeLangfuseTransport(): void {
   provider = new NodeTracerProvider({
     spanProcessors: [
       new LangfuseSpanProcessor({
-        // Export all spans, not just LLM-relevant ones
-        shouldExportSpan: () => true,
+        // Only export tool-call spans, skip health checks and protocol noise
+        shouldExportSpan: (span) => {
+          const mcpMethod = span.otelSpan.attributes["mcp_method"];
+          if (mcpMethod === "tools/call") return true;
+          return !mcpMethod;
+        },
       }),
     ],
   });

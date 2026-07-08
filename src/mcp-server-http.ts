@@ -329,6 +329,7 @@ export async function main() {
         }),
         method: c.req.method,
         client_ip: clientIp,
+        mcp_method: mcpInfo.method ?? "",
       },
       async () => {
         const op = log.start(LogOperation.HANDLING_MCP_HTTP_REQUEST, {
